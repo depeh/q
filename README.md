@@ -42,8 +42,10 @@ Getting Started / SETUP / INSTALL
 ---------------------------------
 
 ### PREREQUISITES
-Node.JS Required Install. Go here for more info: https://nodejs.org/
-MySQL Required Install. Go here for more info: https://dev.mysql.com/downloads/installer/
+Install Node.JS - Go here for more info: https://nodejs.org/
+
+Install MySQL - Go here for more info: https://dev.mysql.com/downloads/installer/
+
 
 ### SETUP & RUN
 1. Set up a MySQL database using the provided schema in `sql/create.sql`.
