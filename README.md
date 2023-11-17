@@ -112,7 +112,7 @@ This example defines two request to be sent to the queue, with the post variable
 Custom Required http headers:
 -----------------------------
 The below headers must be added to the request, if any of these are empty, the request will fail.
-Q-url: The Destination URL, (e.g: http://integration.[yoursite].com/sms)
+Q-url: The Destination URL, (e.g: http://[yoursite].com/sms)
 Q-name: The Queue Name, (e.g: custom_queue)
 
 If the Queue Name does not exist it will be automatically created.
@@ -167,22 +167,31 @@ NOTE that you can not use both DELETE and move a message to a queue!
 
 Extended Optional http headers
 ------------------------------
-To override the standard queue parameters, you can use the below parameters in the http header to affect only the current message
+To customize the behavior for individual messages, you can utilize the following optional HTTP headers:
 
-Q-send-interval: In seconds (3)
-Q-retries: Number of max retries when timeout or failed answer (3)
-Q-retry-interval: In seconds (120)
-Q-success: [ACTION]
-Q-fail: [ACTION]
-Q-priority: The priority of the message, 1 is highest priority (5)
-Q-schedule: The message will be scheduled for delivery at the given datetime, format: YYYY-MM-DD HH:MM:SS(NULL)
+| Header            | Description                                       | Default Value |
+|-------------------|---------------------------------------------------|---------------|
+| `Q-send-interval` | Time interval in seconds                         | 3             |
+| `Q-retries`       | Number of max retries on timeout or failed answer | 3             |
+| `Q-retry-interval`| Time interval in seconds for retries              | 120           |
+| `Q-success`       | Action upon successful delivery                   | [ACTION]      |
+| `Q-fail`          | Action upon delivery failure                      | [ACTION]      |
+| `Q-priority`      | Priority of the message (1 is highest)            | 5             |
+| `Q-schedule`      | Scheduled delivery datetime (YYYY-MM-DD HH:MM:SS(NULL)) | -         |
+
+These headers allow you to tailor the handling of individual messages, providing flexibility and control over the queue processing. Adjust these parameters as needed to meet the specific requirements of your use case.
+
+
 
 Response from the Queue Server
 ------------------------------
 If everything went well, you should get an answer like:
 <q-id>[nn]</q-id>
-where [nn] is the unique ID that your request got in the queue-system.  If you made something wrong, misspelled or forgot a required parameter or so, you will get
-Nope
+
+where [nn] is the unique ID that your request got in the queue-system.
+
+If you made something wrong, misspelled or forgot a required parameter or so, you will get
+**Nope**
 as response. The answer is deliberately made very vague, for hackers, bots or other unauthorized access. 
 
 Queue settings:
