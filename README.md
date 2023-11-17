@@ -107,25 +107,40 @@ SHORT INSTRUCTIONS
 
 The Q Queue System operates by both receiving and sending out HTTP Requests or Emails.
 
-You can leverage the system by adding headers to your standard HTTP request and redirecting the call. This allows you to send multiple HTTP calls asynchronously, which the Queue will then receive, store, and subsequently dispatch to the designated receiver.
+You use the system by adding SPECIFIC http-headers to your standard HTTP request. This allows you to send multiple HTTP calls asynchronously, which the Queue will then receive, store, and subsequently dispatch to the designated receiver.
 
 The system is versatile and can be configured to support either HTTP, HTTPS, or email communication. If HTTPS is chosen, it is necessary to provide cert and key files for SSL encryption.
 
 Additionally, the system offers the flexibility to schedule messages to be triggered at a specified date and time.
 
 
-Add a http request or email to the Queue
+
+
+ADD YOUR HTTP REQUEST TO THE SERVER
 ----------------------------------------
-Send a HTTP or HTTPS request to: [yoursite].com:[portnumber] with your normal request, using your normal http headers and body parameters. Http **POST** and **GET** are supported as of today. 
+Send a HTTP or HTTPS request to: [yoursite].com:[portnumber] with your normal request, using your **normal** http headers and **body-parameters**. Http **POST** and **GET** are supported as of today. 
+
+Required http headers:
+-----------------------------
+The below http-headers **must** be added to the request, if any of these are empty, the request will fail.
+
+| Header  | Description                             | Example                                |
+|---------|-----------------------------------------|----------------------------------------|
+| `Q-url` | The Destination URL                     | e.g., https://[yoursite].com/sms       |
+| `Q-name`| The Queue Name                          | e.g., custom_queue                    |
+
+Ensure that these headers are included in your request. If any of these headers are empty, the request will fail.
+
+If the Queue Name does not exist it will be automatically created.
+
 
 **Normal http headers**
-All HTTP headers will be saved and forwarded to the Q-url address.
+All HTTP headers will be saved and forwarded to the **Q-url** address.
 
 ### HTTP GET Parameters
 To initiate a GET request, direct your call to `[yoursite].com`, **followed** by the request string. For example: `http://[yoursite].com:8080?p1=20&p2=30&info=text`.
 
 The parameters `p1`, `p2`, and `info` will be preserved in the message queue and subsequently sent to the destination host as part of the **GET** request.
-
 
 ### HTTP POST Parameters
 
@@ -148,22 +163,8 @@ To enable multiple requests, you should send the JSON structures as an array, be
 ]
 ```
 
+This example defines two requests to be sent to the queue, with the post variables “name” and “age”.
 
-This example defines two request to be sent to the queue, with the post variables “name” and “age”.
-
-
-Custom Required http headers:
------------------------------
-The below headers must be added to the request, if any of these are empty, the request will fail.
-
-| Header  | Description                             | Example                                |
-|---------|-----------------------------------------|----------------------------------------|
-| `Q-url` | The Destination URL                     | e.g., http://[yoursite].com/sms       |
-| `Q-name`| The Queue Name                           | e.g., custom_queue                    |
-
-Ensure that these headers are included in your request. If any of these headers are empty, the request will fail.
-
-If the Queue Name does not exist it will be automatically created.
 
 
 Expected answer from the destination server
@@ -185,10 +186,11 @@ When sending emails with the system, include the following headers in the HTTP r
 
 | Header       | Description                                              | Example                        |
 |--------------|----------------------------------------------------------|--------------------------------|
+| `Q-url`      | MUST be set to "email" (without quotes ")                | email                          |
 | `Q-to`       | A single recipient email address                         | john@yoursite.com              |
-| `Q-from`     | A single sender email address                             | anna@yoursite.com              |
-| `Q-subject`  | The subject of the mail                                   | "Important Mail"               |
-| `Q-body`     | The body of the mail. Use \n for a newline                | "Hello!\nThis is a test mail"  |
+| `Q-from`     | A single sender email address                             | anna@yoursite.com             |
+| `Q-subject`  | The subject of the mail                                   | "Important Mail"              |
+| `Q-body`     | The body of the mail. Use \n for a newline                | "Hello!\nThis is a test mail" |
 
 
 
