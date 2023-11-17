@@ -171,35 +171,29 @@ Advanced Options:
 - Additional options may be available based on your specific use case.
 
 
+ACTION for Success or Failure
+-----------------------------
 
-ACTION for a success or fail
-----------------------------
-If a message is delivered successfully or fails then one or more ACTIONs are performed. The Action is defined by a string that is parsed.
+When a message is delivered successfully or encounters a failure, one or more ACTIONS are triggered. The ACTION is defined by a string that is parsed.
 
-Multiple ACTIONs can be separated by a comma (,). Please NOTE that for this reason you can not use , in the email/http/queue above.
+Multiple ACTIONs can be separated by a comma (,). Note that, for this reason, you cannot use a comma in the email/http/queue section.
 
-* If the Action says DELETE, the message will be deleted from the Queue. Use with caution!
-* If the Action contains a valid email address then email is assumed and a email will be sent to that address.
-* If the Action starts with http then URL is assumed, and a Http GET Request will be made to that address.
+- If the ACTION is DELETE, the message will be removed from the Queue. Use with caution!
+- If the ACTION contains a valid email address, an email will be sent to that address.
+- If the ACTION starts with http, a Http GET Request will be made to that address.
 
-If the Action contains a word, queue is assumed and the message will be moved to a queue with that name, setting the status to “moved”.
+If the ACTION contains the word "queue," the message will be moved to a queue with that name, setting the status to "moved."
 
-Example of Action strings: 
---------------------------
-DELETE,http://www.url.com/success/,good@success.com  
-1. Will delete the message upon completion.
-2. Send a call to http://www.url.com/success/ 
-3. Send a mail to good@success.com 
+#### Example of ACTION strings:
 
-http://www.url.com/success/,good@success.com,newQueue
-1. Will Send a call to http://www.url.com/success/ 
-2. Send a mail to good@success.com
-3. Send the message to a queue with name newQueue 
+| Action String                                | Description                                               |
+| -------------------------------------------- | --------------------------------------------------------- |
+| DELETE,http://www.url.com/success/,good@success.com | 1. Delete the message upon completion.<br>2. Send a call to http://www.url.com/success/<br>3. Send a mail to good@success.com |
+| http://www.url.com/success/,good@success.com,newQueue | 1. Send a call to http://www.url.com/success/<br>2. Send a mail to good@success.com<br>3. Send the message to a queue named newQueue |
+| error-queue                                 | Send the message to a queue named error-queue              |
 
-error-queue  
-1. Send the message to a queue with name error-queue 
+**Note:** You cannot use both DELETE and move a message to a queue simultaneously!
 
-NOTE that you can not use both DELETE and move a message to a queue!
 
 Extended Optional http headers
 ------------------------------
