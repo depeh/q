@@ -1,0 +1,1 @@
+frontail event.log -U node -P queue
