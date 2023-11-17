@@ -103,11 +103,16 @@ You can use `installAtServer.sh` to install all three services using pm2!
 SHORT INSTRUCTIONS
 ------------------
 
-How does it work?
-Q Queue System works by receiving AND sending out HTTP Requests OR Emails. 
+## How It Works
 
-By adding headers in your normal request and redirecting the http call, you can send multiple http calls asynchronously and the Queue will receive them, store them and send them out to the receiver.
-The system can be set to support either http, https or emails, and if you are to use https, you must supply cert and key files for the SSL-encryption.  You can also schedule messages to fire at a give date and time. 
+The Q Queue System operates by both receiving and sending out HTTP Requests or Emails.
+
+You can leverage the system by adding headers to your standard HTTP request and redirecting the call. This allows you to send multiple HTTP calls asynchronously, which the Queue will then receive, store, and subsequently dispatch to the designated receiver.
+
+The system is versatile and can be configured to support either HTTP, HTTPS, or email communication. If HTTPS is chosen, it is necessary to provide cert and key files for SSL encryption.
+
+Additionally, the system offers the flexibility to schedule messages to be triggered at a specified date and time.
+
 
 Add a http request or email to the Queue
 ----------------------------------------
