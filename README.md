@@ -121,12 +121,6 @@ Refer to your SMTP-provider for credentials.
 
 
 
-
-
-
-How it works
-------------
-
 ## Overview
 
 This system operates through the coordination of two concurrent processes.
