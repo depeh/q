@@ -50,8 +50,10 @@ Install MySQL - Go here for more info: https://dev.mysql.com/downloads/installer
 ### SETUP & RUN
 1. Set up a MySQL database using the provided schema in `sql/create.sql`.
 2. Find and copy `config/default.sample.json` file into `config/default.json` - and customize the `config/default.json` file to your needs, the most important section to setup is "db".
-3. Launch the HTTP/HTTPS Server process (node server.js)
-4. Launch the Queue Consumer process (node queue.js)
+3. Go to your home folder (q) in your Command Line.
+4. Install NPM Packages (command: npm install)
+5. Launch the HTTP/HTTPS Server process (command: node server.js)
+6. Launch the Queue Consumer process (command: node queue.js)
 
 Discover the power of Q, your go-to Request Queue System for efficiently managing requests, ensuring reliability, and simplifying your workflow. Dive into a world of seamless communication and scheduling with Q!
 
