@@ -1,3 +1,9 @@
+/*
+Fair Source License - v1.0 License details: https://opensource.org/licenses/Fair
+Free for general use. Contact Göran Johansson at realdepeh@hotmail.com for commercial licensing.
+Attribution: Göran Johansson, realdepeh@hotmail.com, https://github.com/depeh
+*/
+
 var require = require("./rq");
 
 var request = require("request");
