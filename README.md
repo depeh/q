@@ -230,18 +230,28 @@ If you made something wrong, misspelled or forgot a required parameter or so, yo
 **Nope**
 as response. The answer is deliberately made very vague, for hackers, bots or other unauthorized access. 
 
-Queue settings:
----------------
-Settings for all messages in the queue
-The database table Queueinfo stores the queues and their default settings. The settings below have the corresponding column-name in the table. The default value is given within parentheses ().
 
-SendInterval: In seconds (3)
-Retries: Number of retries when timeout or error with request (3)
-RetryInterval: In seconds (120)
-Success: [ACTION] (DELETE)
-Fail: [ACTION] (NULL)
+### Queue Settings
+
+These settings apply to all messages in the queue, stored in the database table "Queueinfo" along with their default values given in parentheses.
+
+| Setting        | Description                                       | Default Value |
+| -------------- | ------------------------------------------------- | ------------- |
+| **SendInterval** | Time interval in seconds                         | 3             |
+| **Retries**      | Number of retries on timeout or request error     | 3             |
+| **RetryInterval**| Time interval in seconds for retries              | 120           |
+| **Success**     | [ACTION] (Default: DELETE)                        | DELETE        |
+| **Fail**        | [ACTION] (Default: NULL)                          | NULL          |
+
+Adjust these settings in the "Queueinfo" table based on your specific requirements.
 
 
+
+
+
+
+LICENSING
+---------
 
 ## Fair Source License - Version 1.0
 
