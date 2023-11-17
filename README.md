@@ -137,6 +137,8 @@ Logging (Trouble Shooting)
 --------------------------
 Both the Server and the Queue Listener are using the excellent Winston Logging module (https://www.npmjs.com/package/winston), which by default outputs a log to the file **event.log** in the main folder. The logging can be fully customized for advanced users and any customization of the logging is recommended to be done in the file **logger.js**
 
+You can set the error level required for mail to be sent in **logger.json** - Look for "level: 'error' // Set the level at which to send emails, e.g., 'error'" in the file. Refer to the Winston user manual to know which levels you can use.
+
 If something does not work or acts weird, a good tip is to look in the log file and see any error message there.
 
 
