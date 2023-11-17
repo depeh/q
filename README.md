@@ -59,19 +59,24 @@ Testing
 webTest.js can be used to test the Queue system locally and starts a web server at port 8090 with event logging to STDOUT. 
 
 
-Recommended NPM packages 
--------------------------
-These are handy when using Q on a Test/Production server
+### Recommended NPM Packages
 
-frontail - Bring the server log to a webpage, password protected
-https://github.com/mthenw/frontail 
-Install: (sudo npm i frontail -g) Usage: (frontail ./logfile.txt -p 9000 -U myUser -P myPwd)
+These npm packages are useful when working with Q on a Test/Production server:
 
-pm2 - Controls multiple processes very neatly.
-https://www.npmjs.com/package/pm2 
-Install: (sudo npm install pm2 -g) Usage: (pm2 start app.js)
+#### frontail - Bring the server log to a webpage, password protected
+[GitHub Repository](https://github.com/mthenw/frontail)
+- Install: `sudo npm i frontail -g`
+- Usage: `frontail ./logfile.txt -p 9000 -U myUser -P myPwd`
 
-You can use installAtServer.sh to install all three services using pm2!
+#### pm2 - Controls multiple processes very neatly
+[NPM Package](https://www.npmjs.com/package/pm2)
+- Install: `sudo npm install pm2 -g`
+- Usage: `pm2 start app.js`
+
+You can use `installAtServer.sh` to install all three services using pm2!
+
+
+
 
 
 SHORT INSTRUCTIONS
@@ -235,3 +240,30 @@ Retries: Number of retries when timeout or error with request (3)
 RetryInterval: In seconds (120)
 Success: [ACTION] (DELETE)
 Fail: [ACTION] (NULL)
+
+
+
+## Fair Source License - Version 1.0
+
+This project is licensed under the Fair Source License - Version 1.0.
+
+### You are free to:
+
+- **Use**: Anyone can use this software for free.
+
+### Commercial Use:
+
+- **For individuals, small businesses, and non-profits**: Use of this software is free for any purpose.
+
+- **For corporations with annual revenue over $1 million USD**: A commercial license is required. Contact Göran Johansson at realdepeh@hotmail.com for licensing inquiries.
+
+Göran Johansson retains all rights to commercial licensing of this software.
+
+Please refer to the [Fair Source License - Version 1.0](https://opensource.org/licenses/Fair) for the full text and details.
+
+For licensing inquiries, please contact:
+- Göran Johansson
+- Email: realdepeh@hotmail.com
+- GitHub: [https://github.com/depeh](https://github.com/depeh)
+
+
