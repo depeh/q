@@ -116,15 +116,15 @@ Additionally, the system offers the flexibility to schedule messages to be trigg
 
 Add a http request or email to the Queue
 ----------------------------------------
-Send a HTTP request to: q.[yoursite].com:[portnumber] with your normal http request, using your normal http headers and body parameters. Http POST and GET are supported as of today. 
-Normal http headers
+Send a HTTP or HTTPS request to: [yoursite].com:[portnumber] with your normal request, using your normal http headers and body parameters. Http **POST** and **GET** are supported as of today. 
+
+**Normal http headers**
 All HTTP headers will be saved and forwarded to the Q-url address.
 
-
 ### HTTP GET Parameters
-To initiate a GET request, direct your call to `q.[yoursite].com`, followed by the request string. For example: `http://[yoursite].com:8080?p1=20&p2=30&info=text`.
+To initiate a GET request, direct your call to `[yoursite].com`, **followed** by the request string. For example: `http://[yoursite].com:8080?p1=20&p2=30&info=text`.
 
-The parameters `p1`, `p2`, and `info` will be preserved in the message queue and subsequently sent to the destination host as part of the GET request.
+The parameters `p1`, `p2`, and `info` will be preserved in the message queue and subsequently sent to the destination host as part of the **GET** request.
 
 
 ### HTTP POST Parameters
