@@ -1,0 +1,42 @@
+{
+	"db":
+	{
+		"host": "localhost",
+		"user": "root",
+		"password": "pass",
+		"database": "Queue" // The database name, should probably be left alone.
+	},
+	"server":
+	{
+		"whiteListIpAdresses": ["::1", "127.0.0.1", "8.8.8.8"],
+		"httpPort": 8080, // Port number to run a common web server on.
+		"httpsPort": 8081, // Port number to run a SSL encrypted web server on.
+		"ssl":
+		{
+			"active": true, // If this is true, the https server will run, and the http server will not run.
+			"keyFile": "ssl/key.pem",
+			"certFile": "ssl/cert.pem"
+		}
+	},
+	"consumer":
+	{
+		"sleepForSeconds": 1
+	},
+	"email":
+	{
+		"setting":
+		{
+			"user": "no-reply.zcooly",
+			"password": "123456",
+			"host": "zcooly.se",
+			"port": 587,
+			"ssl": false,
+			"tls":
+			{
+				"rejectUnauthorized": false
+			}
+		},
+		"sender": "mail@zcooly.com"
+	}
+
+}
