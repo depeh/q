@@ -89,51 +89,83 @@ Send a HTTP request to: q.[yoursite].com:[portnumber] with your normal http requ
 Normal http headers
 All HTTP headers will be saved and forwarded to the Q-url address.
 
-Parameters for http GET
------------------------
-If you want to send a GET-request you send your call to q.[yoursite].com followed by the request string, e.g: http://[yoursite].com:8080?p1=20&p2=30&info=text   The parameters p1,p2 and info will be stored in the message queue, and sent to the destination host as a GET-request.
 
-Parameters for http POST
-------------------------
-All normal http body parameters will be stored in the queue and forwarded to the URL given in the http header: Q-url.
+### HTTP GET Parameters
+To initiate a GET request, direct your call to `q.[yoursite].com`, followed by the request string. For example: `http://[yoursite].com:8080?p1=20&p2=30&info=text`.
 
-NOTE! Do NOT use a http body parameter name with the name _params because then it will be parsed as the whole request following the rules below.
+The parameters `p1`, `p2`, and `info` will be preserved in the message queue and subsequently sent to the destination host as part of the GET request.
+
+
+### HTTP POST Parameters
+
+All standard HTTP body parameters will be retained in the queue and then relayed to the URL specified in the HTTP header: **Q-url**.
+
+**Note:** Avoid using the HTTP body parameter name "_params," as it will be interpreted as the entire request, adhering to the rules outlined below.
+
+
 
 Multiple requests from single request
 -------------------------------------
-Instead of using form-data parameters you can send a json array string with the parameter name “_params”. This json-structure can contain multiple json-structures and can therefore be used to send multiple requests to the queue with one request.  For multiple requests to work, you must send the multiple json-structures as an array, starting with a [ and ending with a ]. Please follow the below example to understand the required structure:
+Rather than using form-data parameters, you have the option to send a JSON array string with the parameter name "_params". This JSON structure can encompass multiple JSON structures, allowing you to send multiple requests to the queue within a single request.
+
+To enable multiple requests, you should send the JSON structures as an array, beginning with "[" and concluding with "]". Below is an example illustrating the required structure:
+
+```json
 [
     { "name": "arnold", "age": "42"},
     { "name": "john", "age": "32"}
 ]
 
+
+
+
 This example defines two request to be sent to the queue, with the post variables “name” and “age”.
+
 
 Custom Required http headers:
 -----------------------------
 The below headers must be added to the request, if any of these are empty, the request will fail.
-Q-url: The Destination URL, (e.g: http://[yoursite].com/sms)
-Q-name: The Queue Name, (e.g: custom_queue)
+
+| Header  | Description                             | Example                                |
+|---------|-----------------------------------------|----------------------------------------|
+| `Q-url` | The Destination URL                     | e.g., http://[yoursite].com/sms       |
+| `Q-name`| The Queue Name                           | e.g., custom_queue                    |
+
+Ensure that these headers are included in your request. If any of these headers are empty, the request will fail.
 
 If the Queue Name does not exist it will be automatically created.
 
+
 Expected answer from the destination server
 -------------------------------------------
-The Queue Sender expects the http error code to be used on the destination server, that means that the target server MUST respond with Http 200 OK if the message was received and processed properly. This way the Queue Sender will know that the message was sent successfully!
+The Queue Sender **expects** the use of HTTP error codes by the destination server. This implies that the target server **MUST** respond with **HTTP 200 OK** if the message was received and processed successfully. This serves as a crucial indicator to the Queue Sender that the message was sent successfully!
 
-You MUST modify the destination server to respond with any Http Error Codes (Essentially any code except for http 200 OK) if anything goes wrong - that way the Queue Sender will know that anything failed and can wait for a while and then try again, or eventually fail.
- 
+It is imperative to **configure** the destination server to respond with any **HTTP Error Codes** (any code except for **HTTP 200 OK**) in case of any issues. This approach ensures that the Queue Sender is informed of failures, allowing it to implement appropriate strategies, such as **waiting for a specified duration** before retrying or eventually marking the operation as a failure.
+
+You must incorporate these response configurations in your destination server to establish effective communication between the Queue Sender and the server.
+
+
  
 Send Email with the Q-system!
 ----------------------------- 
 Simple mail sending.
 To send emails with the system, the Q-url header MUST be set to “email” (Without the “) You must also supply Q-to, Q-from, Q-subject and Q-body for the email in the http headers.
 
-Q-to: A single recipient email address (e.g: john@yoursite.com)
-Q-from: A single sender email address (e.g: anna@yoursite.com)
-Q-subject: The subject of the mail (e.g: “Important Mail”)
-Q-body: The body of the mail. To get a newline insert \n (e.g: “Hello!\nThis is a test mail”)
-Advanced options.
+When sending emails with the system, include the following headers in the HTTP request:
+
+| Header       | Description                                              | Example                        |
+|--------------|----------------------------------------------------------|--------------------------------|
+| `Q-to`       | A single recipient email address                         | john@yoursite.com              |
+| `Q-from`     | A single sender email address                             | anna@yoursite.com              |
+| `Q-subject`  | The subject of the mail                                   | "Important Mail"               |
+| `Q-body`     | The body of the mail. Use \n for a newline                | "Hello!\nThis is a test mail"  |
+
+
+
+Advanced Options:
+-----------------
+- Additional options may be available based on your specific use case.
+
 
 
 ACTION for a success or fail
