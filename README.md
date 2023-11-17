@@ -5,7 +5,7 @@ Concept, system design and code by Göran Johansson (https://github.com/depeh)
 
 # About Q - Request Queue System
 
-**Q** is a robust and flexible Request Queue System crafted by Göran Johansson, designed to streamline and manage the processing of HTTP requests and emails. Whether you're dealing with asynchronous calls, scheduled deliveries, or email dispatches, Q provides a seamless solution for organizing and executing your tasks efficiently.
+**Q** is a robust and flexible Request Queue System, designed to streamline and manage the processing of HTTP requests and emails. Whether you're dealing with asynchronous calls, scheduled deliveries, or email dispatches, Q provides a seamless solution for organizing and executing your tasks efficiently.
 
 ## Key Features:
 
