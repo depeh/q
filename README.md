@@ -3,11 +3,49 @@ Q - Request Queue System
 Concept, system design and code by Göran Johansson (https://github.com/depeh)
 
 
-Short instructions.
--------------------
-Copy config/default.sample.json to config/default.json and edit it to suit your needs.
-Create a MySQL database as in sql/create.sql
-Start server.js and queue.js
+# About Q - Request Queue System
+
+**Q** is a robust and flexible Request Queue System crafted by Göran Johansson, designed to streamline and manage the processing of HTTP requests and emails. Whether you're dealing with asynchronous calls, scheduled deliveries, or email dispatches, Q provides a seamless solution for organizing and executing your tasks efficiently.
+
+## Key Features:
+
+**1. Dual-Process Architecture:**
+   - *server.js:* Runs an HTTP/HTTPS server, efficiently receiving and processing all incoming messages.
+   - *queue.js:* Acts as a Queue Consumer, dispatching messages from the queue and ensuring smooth delivery to the designated endpoints.
+
+**2. Easy Configuration:**
+   - Quickly set up Q by copying and customizing the provided `config/default.json` file.
+   - Create a MySQL database using the schema outlined in `sql/create.sql`.
+
+**3. Testing Capabilities:**
+   - Utilize `webTest.js` to perform local tests, initiating a web server with event logging for thorough testing and debugging.
+
+**4. Recommended NPM Packages:**
+   - Enhance your Q experience on test and production servers with useful packages like *frontail* and *pm2* for streamlined logging and process management.
+
+**5. Versatile Request Handling:**
+   - Q excels at handling both incoming and outgoing HTTP requests and emails.
+   - Easily configure Q to support HTTP, HTTPS, or Emails based on your project's needs.
+
+**6. Actionable Responses:**
+   - Define actions for success or failure, including message deletion, email notifications, or additional HTTP requests.
+   - Actions are parsed from a string, providing flexibility in response management.
+
+**7. Extended Customization:**
+   - Override standard queue parameters using optional HTTP headers for individualized message behavior.
+   - Configure default settings for all messages in the queue through the `Queueinfo` database table.
+
+**8. Security Measures:**
+   - Q's response system ensures security by providing vague error messages in case of misconfigurations, misspellings, or unauthorized access attempts.
+
+## Getting Started:
+
+1. Copy and customize the `config/default.json` file.
+2. Set up a MySQL database using the provided schema in `sql/create.sql`.
+3. Launch the `server.js` and `queue.js` processes to initiate the HTTP/HTTPS server and Queue Consumer.
+
+Discover the power of Q, your go-to Request Queue System for efficiently managing requests, ensuring reliability, and simplifying your workflow. Dive into a world of seamless communication and scheduling with Q!
+
 
 Information
 -----------
