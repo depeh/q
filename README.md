@@ -93,6 +93,13 @@ This document provides a quick explanation of how to set up the configuration in
 ## email
 
 For email functionality, SMTP information and an authorized SMTP user must be provided.
+Refer to your SMTP-provider for credentials.
+
+### active
+
+| Property    | Description                          | Example                  |
+|-------------|--------------------------------------|--------------------------|
+| active       | Should mail be used (true/false). You must setup settings before setting this to true!| false         |
 
 ### setting
 
@@ -110,7 +117,7 @@ For email functionality, SMTP information and an authorized SMTP user must be pr
 
 | Property    | Description                          | Example                  |
 |-------------|--------------------------------------|--------------------------|
-| email       | Email address of the mail sender      | user2@gmail.com          |
+| sender       | Email address of the mail sender      | user2@gmail.com          |
 
 
 
