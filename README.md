@@ -115,8 +115,7 @@ To enable multiple requests, you should send the JSON structures as an array, be
     { "name": "arnold", "age": "42"},
     { "name": "john", "age": "32"}
 ]
-
-
+```
 
 
 This example defines two request to be sent to the queue, with the post variables “name” and “age”.
