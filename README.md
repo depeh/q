@@ -38,24 +38,31 @@ Concept, system design and code by Göran Johansson (https://github.com/depeh)
 **8. Security Measures:**
    - Q's response system ensures security by providing vague error messages in case of misconfigurations, misspellings, or unauthorized access attempts.
 
-## Getting Started:
+Getting Started / SETUP / INSTALL
+---------------------------------
 
-1. Copy and customize the `config/default.json` file.
-2. Set up a MySQL database using the provided schema in `sql/create.sql`.
+### PREREQUISITES
+Node.JS Required Install. Go here for more info: https://nodejs.org/
+MySQL Required Install. Go here for more info: https://dev.mysql.com/downloads/installer/
+
+### SETUP & RUN
+1. Set up a MySQL database using the provided schema in `sql/create.sql`.
+2. Copy and customize the `config/default.json` file.
 3. Launch the `server.js` and `queue.js` processes to initiate the HTTP/HTTPS server and Queue Consumer.
 
 Discover the power of Q, your go-to Request Queue System for efficiently managing requests, ensuring reliability, and simplifying your workflow. Dive into a world of seamless communication and scheduling with Q!
 
 
-Information
------------
+How it works
+------------
 The queue system uses two processes that should be running at the same time.
 
 server.js - Runs a Http/Https server that receives all messages
 queue.js - Runs a Queue Consumer that dispatch messages from the queue and sends them to the receiver endpoint.
 
-Testing
--------
+
+How to Test
+-----------
 webTest.js can be used to test the Queue system locally and starts a web server at port 8090 with event logging to STDOUT. 
 
 
