@@ -1,0 +1,25 @@
+LICENSING
+---------
+
+## Fair Source License - Version 1.0
+
+This project is licensed under the Fair Source License - Version 1.0.
+
+### You are free to:
+
+- **Use**: Anyone can use this software for free.
+
+### Commercial Use:
+
+- **For individuals, small businesses, and non-profits**: Use of this software is free for any purpose.
+
+- **For corporations with annual revenue over $1 million USD**: A commercial license is required. Contact Göran Johansson at realdepeh@hotmail.com for licensing inquiries.
+
+Göran Johansson retains all rights to commercial licensing of this software.
+
+Please refer to the [Fair Source License - Version 1.0](https://opensource.org/licenses/Fair) for the full text and details.
+
+For licensing inquiries, please contact:
+- Göran Johansson
+- Email: realdepeh@hotmail.com
+- GitHub: [https://github.com/depeh](https://github.com/depeh)
