@@ -60,10 +60,19 @@ Discover the power of Q, your go-to Request Queue System for efficiently managin
 
 How it works
 ------------
-The queue system uses two processes that should be running at the same time.
 
-server.js - Runs a Http/Https server that receives all messages
-queue.js - Runs a Queue Consumer that dispatch messages from the queue and sends them to the receiver endpoint.
+## Overview
+
+This system operates through the coordination of two concurrent processes.
+
+### Server Component
+
+**`server.js`:** This component initiates an HTTP/HTTPS server responsible for handling incoming messages.
+
+### Queue Processing
+
+**`queue.js`:** The Queue Consumer, implemented by this component, retrieves messages from the queue and forwards them to the designated receiver endpoint. Both processes, `server.js` and `queue.js`, need to be active simultaneously for the system to function effectively.
+
 
 
 How to Test
