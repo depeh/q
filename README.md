@@ -48,14 +48,73 @@ Install MySQL - Go here for more info: https://dev.mysql.com/downloads/installer
 
 
 ### SETUP & RUN
-1. Set up a MySQL database using the provided schema in `sql/create.sql`.
-2. Find and copy `config/default.sample.json` file into `config/default.json` - and customize the `config/default.json` file to your needs, the most important section to setup is "db".
+1. Create a MySQL database and set it up using the provided SQL-code in `sql/create.sql`.
+2. Find and copy `config/default.sample.json` file into `config/default.json` - and customize the `config/default.json` file to your needs, see the section "Configuring **default.json**" below.
 3. Go to your home folder (q) in your Command Line.
 4. Install NPM Packages (command: npm install)
 5. Launch the HTTP/HTTPS Server process (command: node server.js)
 6. Launch the Queue Consumer process (command: node queue.js)
 
 Discover the power of Q, your go-to Request Queue System for efficiently managing requests, ensuring reliability, and simplifying your workflow. Dive into a world of seamless communication and scheduling with Q!
+
+THE MAIN CONFIG-FILE
+--------------------
+## Configuring **default.json**
+
+This document provides a quick explanation of how to set up the configuration in `config/default.json`.
+
+## db
+
+| Property  | Description                                       | Example Value |
+|-----------|---------------------------------------------------|---------------|
+| host      | The host address/IP of the MySQL database server  | localhost     |
+| user      | The database user with access to the database     | root          |
+| password  | Password for the database user                    | password      |
+| database  | The name of the database to set up                | queue         |
+
+## server
+
+| Property               | Description                                                              | Example Value                |
+|------------------------|--------------------------------------------------------------------------|------------------------------|
+| whiteListIpAddresses   | An array of IP addresses allowed to access the Queue Server               | ["::1", "127.0.0.1", "8.8.8.8"] |
+| httpPort               | The HTTP port number for the server to listen at                           | 8080                         |
+| httpsPort              | The HTTPS port number for the server (requires ssl/active to be true)    | 8081                         |
+| **ssl**                | **Configuration for SSL**                                               | **Example Value**            |
+| active                 | Activate SSL (true/false), set to false for HTTP instead of HTTPS         | false                        |
+| keyFile                | Path to the key file used for the SSL certificate                        | ssl/key.pem                  |
+| certFile               | Path to the certificate file used for the SSL certificate                 | ssl/cert.pem                 |
+
+## consumer
+
+| Property            | Description                                                   | Example       |
+|---------------------|---------------------------------------------------------------|---------------|
+| sleepForSeconds     | The number of seconds the Queue Handler should sleep           | 1             |
+
+## email
+
+For email functionality, SMTP information and an authorized SMTP user must be provided.
+
+### setting
+
+| Property            | Description                               | Example                  |
+|---------------------|-------------------------------------------|--------------------------|
+| user                | Email sender server user name             | user2@gmail.com          |
+| password            | Password for the email sender server user | password                 |
+| host                | The host/IP address of the email server    | gmail.com                |
+| port                | The email server port                     | 587                      |
+| ssl                 | Should the email server use SSL (true/false) | false                   |
+| **tls**             | **TLS Configuration**                         | **Default Value**        |
+| rejectUnauthorized | Should the email server reject unauthorized requests (true/false) | false |
+
+### sender
+
+| Property    | Description                          | Example                  |
+|-------------|--------------------------------------|--------------------------|
+| email       | Email address of the mail sender      | user2@gmail.com          |
+
+
+
+
 
 
 How it works
