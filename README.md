@@ -116,8 +116,8 @@ Additionally, the system offers the flexibility to schedule messages to be trigg
 
 
 
-ADD YOUR HTTP REQUEST TO THE SERVER
-----------------------------------------
+ADD YOUR HTTP REQUEST TO THE QUEUE
+----------------------------------
 Send a HTTP or HTTPS request to: [yoursite].com:[portnumber] with your normal request, using your **normal** http headers and **body-parameters**. Http **POST** and **GET** are supported as of today. 
 
 Required http headers:
