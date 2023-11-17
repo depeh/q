@@ -165,20 +165,17 @@ error-queue
 
 NOTE that you can not use both DELETE and move a message to a queue!
 
+Extended Optional http headers
+------------------------------
+To override the standard queue parameters, you can use the below parameters in the http header to affect only the current message
 
-### Extended Optional HTTP Headers
-
-To customize the behavior for individual messages, you can utilize the following optional HTTP headers:
-
-```http
-Q-send-interval: 3
-Q-retries: 3
-Q-retry-interval: 120
+Q-send-interval: In seconds (3)
+Q-retries: Number of max retries when timeout or failed answer (3)
+Q-retry-interval: In seconds (120)
 Q-success: [ACTION]
 Q-fail: [ACTION]
-Q-priority: 5
-Q-schedule: YYYY-MM-DD HH:MM:SS(NULL)
-
+Q-priority: The priority of the message, 1 is highest priority (5)
+Q-schedule: The message will be scheduled for delivery at the given datetime, format: YYYY-MM-DD HH:MM:SS(NULL)
 
 Response from the Queue Server
 ------------------------------
