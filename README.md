@@ -133,9 +133,9 @@ This system operates through the coordination of two concurrent processes.
 **`queue.js`:** The Queue Consumer, implemented by this component, retrieves messages from the queue and forwards them to the designated receiver endpoint. Both processes, `server.js` and `queue.js`, need to be active simultaneously for the system to function effectively.
 
 
-LOGGING & TROUBLE SHOOTING
+Logging (Trouble Shooting)
 --------------------------
-Both the Server and the Queue Listener are using Winston Logging module, which by default outputs a log to the file **event.log** in the main folder. The loggins can be fully customized for advanced users. Any customization of the logging is best done in the file **logger.js**
+Both the Server and the Queue Listener are using the excellent Winston Logging module (https://www.npmjs.com/package/winston), which by default outputs a log to the file **event.log** in the main folder. The logging can be fully customized for advanced users and any customization of the logging is recommended to be done in the file **logger.js**
 
 If something does not work or acts weird, a good tip is to look in the log file and see any error message there.
 
