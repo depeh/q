@@ -7,53 +7,49 @@ var mailOptions = require('./mailOptions.jss');
 var winston = require('winston'),
 	Mail = require('winston-mail').Mail;
 
-var logger = new(winston.Logger)(
-{
+var logger = winston.createLogger({
 	transports: [
-
-		new(winston.transports.Console)(
-		{
-			timestamp: function()
-			{
-				return df();
-			},
-			formatter: function(options)
-			{
-				return cf(options);
-			}
+		new winston.transports.Console({
+			format: winston.format.combine(
+				winston.format.timestamp({
+					format: 'YYYY-MM-DD HH:mm:ss'
+				}),
+				winston.format.printf(info => `${info.timestamp} (${process.pid}) ${info.level.toUpperCase()} ${info.message}`)
+			)
 		}),
-		new(winston.transports.File)(
-		{
-			timestamp: function()
-			{
-				return df();
-			},
-			formatter: function(options)
-			{
-				return cf(options);
-			},
+		new winston.transports.File({
+			format: winston.format.combine(
+				winston.format.timestamp({
+					format: 'YYYY-MM-DD HH:mm:ss'
+				}),
+				winston.format.printf(info => `${info.timestamp} (${process.pid}) ${info.level.toUpperCase()} ${info.message}`)
+			),
 			filename: 'event.log',
 			json: false
+		}),
+		new Mail({
+			to: mailOptions.to,
+			from: mailOptions.from,
+			subject: mailOptions.subject,
+			host: mailOptions.host,
+			port: mailOptions.port,
+			username: mailOptions.username,
+			password: mailOptions.password,
+			ssl: mailOptions.ssl,
+			level: 'error' // Set the level at which to send emails, e.g., 'error'
 		})
 	]
 });
 
-logger.add(Mail, mailOptions);
 logger.setLevels(winston.config.syslog.levels);
 
 module.exports = logger;
 
-
-
-
-
-function df()
-{
+function df() {
 	return moment(new Date()).format("YYYY-MM-DD HH:mm:ss");
 }
 
-function cf(options)
-{
+function cf(options) {
 	return options.timestamp() + ' (' + process.pid + ') ' + options.level.toUpperCase() + ' ' + (options.message ? options.message : '') +
 		(options.meta && Object.keys(options.meta).length ? '\n\t' + JSON.stringify(options.meta) : '');
 }
