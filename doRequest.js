@@ -65,7 +65,7 @@ exports.http = function(id, uri, verb, headers, params)
 
 		if (error)
 		{
-			logger.warning("Msg #" + id + " Error " + error);
+			logger.warn("Msg #" + id + " Error " + error);
 			// Handle FAIL
 			result.handleError(id, body, error);
 
@@ -74,7 +74,7 @@ exports.http = function(id, uri, verb, headers, params)
 		var status = response.statusCode;
 		if (status != 200)
 		{
-			logger.warning("Msg #" + id + " http error " + status);
+			logger.warn("Msg #" + id + " http error " + status);
 			// Handle FAIL
 			result.handleError(id, body, status);
 
@@ -149,7 +149,7 @@ exports.email = function(id, uri, verb, headers, params)
 	{
 		if (mailBody != undefined) mailBody = "(body)";
 		var mailStr = 'From: "' + mailFrom + '" - To: "' + mailTo + '" - Subject: "' + mailSubject + '" - Body: ' + mailBody;
-		logger.warning("Msg #" + id + " Error. Mail parameters missing/faulty! " + mailStr);
+		logger.warn("Msg #" + id + " Error. Mail parameters missing/faulty! " + mailStr);
 		result.handleError(id, "Mail was not sent to " + mailTo, "Mail parameters missing/faulty! " + mailStr, true);
 		return;
 	}
@@ -173,7 +173,7 @@ exports.email = function(id, uri, verb, headers, params)
 	{
 		if (err)
 		{
-			logger.warning("Msg #" + id + " Error. Mail was not sent to " + mailTo + "! Message: " + err.message);
+			logger.warn("Msg #" + id + " Error. Mail was not sent to " + mailTo + "! Message: " + err.message);
 			result.handleError(id, "Mail was not sent to " + mailTo, err.message);
 			return;
 		}
@@ -201,7 +201,7 @@ exports.email = function(id, uri, verb, headers, params)
 	{
 		if (err)
 		{
-			logger.warning("Msg #" + id + " Error. Mail was not sent to " + mailTo + "! Message: " + err.message);
+			logger.warn("Msg #" + id + " Error. Mail was not sent to " + mailTo + "! Message: " + err.message);
 			result.handleError(id, "Mail was not sent to " + mailTo, err.message);
 			return;
 		}

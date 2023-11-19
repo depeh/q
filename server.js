@@ -28,7 +28,10 @@ git.short(function(str)
  */
 
 // Init mail
-global.transporter = common.initMail();
+if (config.get('email.active'))
+{
+	global.transporter = common.initMail();
+}
 
 var SSL = config.get('server.ssl.active');
 var sslKeyFile = config.get('server.ssl.keyFile');

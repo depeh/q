@@ -86,14 +86,14 @@ function sendHttpMessage(uri, id, result)
 
 		if (error)
 		{
-			logger.warning("Msg #" + id + " Action. Error while sending http for " + result + " msg. Error: " + error);
+			logger.warn("Msg #" + id + " Action. Error while sending http for " + result + " msg. Error: " + error);
 			return;
 		}
 
 		var status = response.statusCode;
 		if (status != 200)
 		{
-			logger.warning("Msg #" + id + " Action. Error while sending http for " + result + " msg. http statuscode: " + error);
+			logger.warn("Msg #" + id + " Action. Error while sending http for " + result + " msg. http statuscode: " + error);
 			return;
 		}
 
@@ -118,7 +118,7 @@ function sendEmail(mail, id, result, body, info)
 	{
 		if (err)
 		{
-			logger.warning("Msg #" + id + " Mail was not sent to " + mail + "! Message: " + err.message);
+			logger.warn("Msg #" + id + " Mail was not sent to " + mail + "! Message: " + err.message);
 		}
 		else
 		{
@@ -232,15 +232,15 @@ exports.handleError = function(id, body, info, fatal)
 			// set fail Status
 
 			status = common.messageStatus.FAIL;
-			logger.warning("Msg #" + id + " Failed! I have given up!");
-			logger.warning("Msg #" + id + " Response: " + body);
+			logger.warn("Msg #" + id + " Failed! I have given up!");
+			logger.warn("Msg #" + id + " Response: " + body);
 
 		}
 		else
 		{
 			db.increaseStats("RetriedMessages");
 
-			logger.warning("Retrying msg #" + id + " at " + deliveryTime + ". Retry #" + retryCounter);
+			logger.warn("Retrying msg #" + id + " at " + deliveryTime + ". Retry #" + retryCounter);
 		}
 
 		// Update the Message

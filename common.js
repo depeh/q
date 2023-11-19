@@ -14,7 +14,10 @@ exports.version = "0.2.0";
 // On uncaught Exception, 
 process.on('uncaughtException', function(err)
 {
-	logger.alert(err); // Alert sends mail!
+	console.log("Uncaught Exception: ");
+	console.log(err);
+	logger.error("Uncaught Exception");
+	logger.error(err);
 });
 
 exports.validateEmail = function(email)
@@ -88,6 +91,7 @@ exports.initMail = function()
 	{
 		if (error)
 		{
+			console.log('SMTP Server Error. Could not connect to SMTP Server! Please check your settings!');
 			logger.error(error);
 		}
 		else

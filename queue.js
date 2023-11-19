@@ -29,7 +29,10 @@ git.short(function(str)
  */
 
 // init mail
-global.transporter = common.initMail();
+if (config.get('email.active'))
+{
+	global.transporter = common.initMail();
+}
 
 var startedDate = new Date();
 

@@ -26,7 +26,8 @@ var logger = winston.createLogger({
 			),
 			filename: 'event.log',
 			json: false
-		}),
+		})
+		,
 		new Mail({
 			to: mailOptions.to,
 			from: mailOptions.from,
@@ -36,7 +37,7 @@ var logger = winston.createLogger({
 			username: mailOptions.username,
 			password: mailOptions.password,
 			ssl: mailOptions.ssl,
-			level: 'error' // Set the level at which to send emails, e.g., 'error'
+			level: 'none' // Set the level at which to send emails, e.g. 'error'. Set to 'none' for not using mail!
 		})
 	]
 });
