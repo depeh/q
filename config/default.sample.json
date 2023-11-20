@@ -4,7 +4,7 @@
 		"host": "localhost",
 		"user": "root",
 		"password": "pass",
-		"database": "Queue" 
+		"database": "queue" 
 	},
 	"server":
 	{
@@ -13,7 +13,7 @@
 		"httpsPort": 8081,
 		"ssl":
 		{
-			"active": true, 
+			"active": false, 
 			"keyFile": "ssl/key.pem",
 			"certFile": "ssl/cert.pem"
 		}
@@ -24,9 +24,10 @@
 	},
 	"email":
 	{
+		"active": false,
 		"setting":
 		{
-			"user": "no-reply.user",
+			"user": "username",
 			"password": "123456",
 			"host": "domain.com",
 			"port": 587,
