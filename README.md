@@ -110,7 +110,7 @@ Refer to your SMTP-provider for credentials.
 | host                | The host/IP address of the email server    | gmail.com                |
 | port                | The email server port                     | 587                      |
 | ssl                 | Should the email server use SSL (true/false) | false                   |
-| **tls**             | **TLS Configuration**                         | **Default Value**        |
+| **tls**             | **TLS Configuration**                         | **Example**        |
 | rejectUnauthorized | Should the email server reject unauthorized requests (true/false) | false |
 
 ### sender
