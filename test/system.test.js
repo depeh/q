@@ -15,6 +15,7 @@ let backupConfig = null;
 let receiverServer = null;
 let receiverRequests = [];
 let failMode = true;
+let unauthorizedMode = false;
 let serverProcess = null;
 let queueProcess = null;
 let tempDir = null;
@@ -82,6 +83,13 @@ function startReceiverServer(port)
 				{
 					res.writeHead(500);
 					res.end('failed');
+					return;
+				}
+
+				if (req.url === '/unauthorized' && unauthorizedMode)
+				{
+					res.writeHead(401);
+					res.end('unauthorized');
 					return;
 				}
 
@@ -182,6 +190,8 @@ test.before(async function()
 			sleepForSeconds: 1,
 			maxConcurrent: 2,
 			minIntervalPerHostMs: 0,
+			httpResponseCodesOK: '200,401',
+			httpResponseCodesFail: '',
 			deadLetter: {
 				active: true,
 				prefix: 'dead-letter.'
@@ -321,4 +331,27 @@ test('moves failed messages to dead-letter and allows requeue', async function()
 		const response = await fetch(`http://127.0.0.1:${ports.server}/admin/api/messages/${deadLetterMessageId}`);
 		return response.status === 404;
 	}, 10000, 'Successfully requeued message was not deleted after success');
+});
+
+test('accepts configured non-200 response codes as success', async function()
+{
+	unauthorizedMode = true;
+
+	const responseText = await queueRequest({
+		'q-name': 'customok',
+		'q-url': `http://127.0.0.1:${ports.receiver}/unauthorized`
+	}, 'mode=custom');
+
+	assert.match(responseText, /<q-id>\d+<\/q-id>/);
+
+	await waitFor(async function()
+	{
+		return receiverRequests.some((request) => request.path === '/unauthorized');
+	}, 10000, 'Configured success-status request was never delivered');
+
+	await waitFor(async function()
+	{
+		const payload = await getJson('/admin/api/activity');
+		return payload.events.some((event) => event.EventType === 'success' && event.Queue === 'customok');
+	}, 10000, '401 response was not treated as success');
 });

@@ -1,455 +1,640 @@
 Q - Request Queue System
-------------------------------
-Concept, system design and code by Göran Johansson (https://github.com/depeh)
+------------------------
+Concept, system design and code by Goran Johansson (https://github.com/depeh)
 
+# About
 
-# About Q - Request Queue System
+**Q** is a request queue system for HTTP requests and email delivery. It receives incoming jobs through `server.js`, stores them in a database, and dispatches them asynchronously through `queue.js`.
 
-**Q** is a robust and flexible Request Queue System, designed to streamline and manage the processing of HTTP requests and emails. Whether you're dealing with asynchronous calls, scheduled deliveries, or email dispatches, Q provides a seamless solution for organizing and executing your tasks efficiently.
+Typical use cases:
+- send HTTP requests asynchronously instead of directly in the user flow
+- retry failed deliveries
+- schedule delivery for a later time
+- move failed jobs to a dead-letter queue
+- inspect and requeue jobs from the admin UI
 
-## Key Features:
+## Main features
 
-**1. Dual-Process Architecture:**
-   - *server.js:* Runs an HTTP/HTTPS server, efficiently receiving and processing all incoming messages.
-   - *queue.js:* Acts as a Queue Consumer, dispatching messages from the queue and ensuring smooth delivery to the designated endpoints.
+- dual-process architecture:
+  - `server.js` receives and stores jobs
+  - `queue.js` dispatches jobs
+- database backend:
+  - `mysql`
+  - `sqlite`
+- built-in admin dashboard at `/admin`
+- admin API for queue/message inspection and requeue
+- dead-letter support
+- concurrency and per-host rate limiting
+- automated system tests with `npm test`
 
-**2. Easy Configuration:**
-   - Quickly set up Q by copying and customizing the provided `config/default.json` file.
-   - Choose database backend: `mysql` or `sqlite`.
-   - For MySQL, create a database using the schema in `sql/create.sql`.
-   - For SQLite, Q auto-creates database file and tables at startup.
+# Quick Start
 
-**3. Testing Capabilities:**
-   - Run `npm test` to execute the built-in end-to-end system tests.
-   - Utilize `webTest.js` to perform additional local tests with event logging.
+This section is the fastest way to get Q running locally.
 
-**4. Recommended NPM Packages:**
-   - Enhance your Q experience on test and production servers with useful packages like *frontail* and *pm2* for streamlined logging and process management.
+## Prerequisites
 
-**5. Versatile Request Handling:**
-   - Q excels at handling both incoming and outgoing HTTP requests and emails.
-   - Easily configure Q to support HTTP, HTTPS, or Emails based on your project's needs.
+- Node.js
+- MySQL only if you want `db.client = "mysql"`
 
-**6. Actionable Responses:**
-   - Define actions for success or failure, including message deletion, email notifications, or additional HTTP requests.
-   - Actions are parsed from a string, providing flexibility in response management.
+## 1. Install dependencies
 
-**7. Extended Customization:**
-   - Override standard queue parameters using optional HTTP headers for individualized message behavior.
-   - Configure default settings for all messages in the queue through the `Queueinfo` database table.
-
-**8. Security Measures:**
-   - Q's response system ensures security by providing vague error messages in case of misconfigurations, misspellings, or unauthorized access attempts.
-
-**9. Operational Tooling:**
-   - Built-in admin API and dashboard at `/admin`.
-   - Dead-letter support with requeue from the admin API.
-   - Consumer concurrency and per-host rate limiting controls.
-
-Getting Started / SETUP / INSTALL
----------------------------------
-
-### PREREQUISITES
-Install Node.JS - Go here for more info: https://nodejs.org/
-
-Install MySQL only if you plan to run with `db.client = "mysql"`:
-https://dev.mysql.com/downloads/installer/
-
-
-### SETUP & RUN
-1. Copy `config/default.sample.json` to `config/default.json`.
-2. Install NPM packages:
-   - `npm install`
-3. Choose one database backend:
-   - **MySQL**
-     1. Set `"db.client": "mysql"` in `config/default.json`.
-     2. Create a MySQL database and run `sql/create.sql`.
-     3. Set `db.host`, `db.user`, `db.password`, `db.database`.
-   - **SQLite**
-     1. Set `"db.client": "sqlite"` in `config/default.json`.
-     2. Set `db.sqlite.file` (for example `./data/queue.sqlite`).
-     3. No manual schema step is needed. Tables are created automatically.
-4. Launch the HTTP/HTTPS server process:
-   - `node server.js`
-5. Launch the queue consumer process:
-   - `node queue.js`
-
-Discover the power of Q, your go-to Request Queue System for efficiently managing requests, ensuring reliability, and simplifying your workflow. Dive into a world of seamless communication and scheduling with Q!
-
-THE MAIN CONFIG-FILE
---------------------
-## Configuring **default.json**
-
-This document provides a quick explanation of how to set up the configuration in `config/default.json`.
-
-## db
-
-| Property  | Description                                       | Example Value |
-|-----------|---------------------------------------------------|---------------|
-| client    | Database backend. Supported values: `mysql`, `sqlite` | mysql |
-| host      | The host address/IP of the MySQL database server  | localhost     |
-| user      | The database user with access to the database     | root          |
-| password  | Password for the database user                    | password      |
-| database  | The name of the database to set up                | queue         |
-| sqlite.file | SQLite file path when `client` is `sqlite`     | ./data/queue.sqlite |
-
-### Example db config for MySQL
-
-```json
-"db": {
-  "client": "mysql",
-  "host": "localhost",
-  "user": "root",
-  "password": "pass",
-  "database": "queue"
-}
+```bash
+npm install
 ```
 
-### Example db config for SQLite
+## 2. Create local config
+
+Copy `config/default.sample.json` to `config/default.json`.
+
+For SQLite, this is enough:
 
 ```json
-"db": {
-  "client": "sqlite",
-  "sqlite": {
-    "file": "./data/queue.sqlite"
+{
+  "db": {
+    "client": "sqlite",
+    "sqlite": {
+      "file": "./data/queue.sqlite"
+    }
   }
 }
 ```
 
-## server
+For MySQL, configure this instead:
 
-| Property               | Description                                                              | Example Value                |
-|------------------------|--------------------------------------------------------------------------|------------------------------|
-| whiteListIpAddresses   | An array of IP addresses allowed to access the Queue Server               | ["::1", "127.0.0.1", "8.8.8.8"] |
-| maxBodySizeKb          | Maximum incoming request body size in kilobytes                           | 256                          |
-| httpPort               | The HTTP port number for the server to listen at                           | 8080                         |
-| httpsPort              | The HTTPS port number for the server (requires ssl/active to be true)    | 8081                         |
-| **ssl**                | **Configuration for SSL**                                               | **Example Value**            |
-| active                 | Activate SSL (true/false), set to false for HTTP instead of HTTPS         | false                        |
-| keyFile                | Path to the key file used for the SSL certificate                        | ssl/key.pem                  |
-| certFile               | Path to the certificate file used for the SSL certificate                 | ssl/cert.pem                 |
+```json
+{
+  "db": {
+    "client": "mysql",
+    "host": "localhost",
+    "user": "root",
+    "password": "pass",
+    "database": "queue"
+  }
+}
+```
 
-## consumer
+If you use MySQL, create the schema from [sql/create.sql](/Users/gorano/temp/source/q/sql/create.sql).
 
-| Property            | Description                                                   | Example       |
-|---------------------|---------------------------------------------------------------|---------------|
-| sleepForSeconds     | The number of seconds the Queue Handler should sleep           | 1             |
-| maxConcurrent       | Maximum number of messages dispatched in parallel              | 4             |
-| minIntervalPerHostMs| Minimum delay between outgoing requests to the same host       | 0             |
-| deadLetter.active   | Move permanently failed messages to a dead-letter queue        | true          |
-| deadLetter.prefix   | Prefix used for dead-letter queue names                        | dead-letter.  |
+## 3. Start Q
 
-## email
+In terminal 1:
 
-For email functionality, SMTP information and an authorized SMTP user must be provided.
-Refer to your SMTP-provider for credentials.
+```bash
+node server.js
+```
 
-### active
+In terminal 2:
 
-| Property    | Description                          | Example                  |
-|-------------|--------------------------------------|--------------------------|
-| active       | Should mail be used (true/false). You must setup settings before setting this to true!| false         |
+```bash
+node queue.js
+```
 
-### setting
+## 4. Verify health
 
-| Property            | Description                               | Example                  |
-|---------------------|-------------------------------------------|--------------------------|
-| user                | Email sender server user name             | user2@gmail.com          |
-| password            | Password for the email sender server user | password                 |
-| host                | The host/IP address of the email server    | gmail.com                |
-| port                | The email server port                     | 587                      |
-| ssl                 | Should the email server use SSL (true/false) | false                   |
-| **tls**             | **TLS Configuration**                         | **Example**        |
-| rejectUnauthorized | Should the email server reject unauthorized requests (true/false) | false |
+```bash
+curl -i http://127.0.0.1:8080/test
+```
 
-### sender
+Expected result:
+- HTTP `200 OK`
+- body: `Alive`
 
-| Property    | Description                          | Example                  |
-|-------------|--------------------------------------|--------------------------|
-| sender       | Email address of the mail sender      | user2@gmail.com          |
+## 5. Send a test job
+
+```bash
+curl -X POST http://127.0.0.1:8080 \
+  -H "q-name: testq" \
+  -H "q-url: https://httpbin.org/post" \
+  -d "hello=world"
+```
 
+Expected result:
 
+```xml
+<q-id>123</q-id>
+```
+
+## 6. Open the admin UI
+
+Open:
+
+```text
+http://127.0.0.1:8080/admin
+```
 
-## Overview
+## 7. Run automated tests
 
-This system operates through the coordination of two concurrent processes.
+```bash
+npm test
+```
 
-### Server Component
+## 8. Use `webTest.js` for local end-to-end testing
 
-**`server.js`:** This component initiates an HTTP/HTTPS server responsible for handling incoming messages.
+If you want to inspect exactly what Q sends to a destination service, start the built-in local receiver:
 
-### Queue Processing
+In terminal 3:
 
-**`queue.js`:** The Queue Consumer, implemented by this component, retrieves messages from the queue and forwards them to the designated receiver endpoint. Both processes, `server.js` and `queue.js`, need to be active simultaneously for the system to function effectively.
+```bash
+node webTest.js
+```
 
+`webTest.js` starts a simple HTTP server on port `8090` and:
+- logs incoming request headers
+- logs the request URL
+- logs parsed body parameters
+- always responds with `200 ok`
 
-Logging (Trouble Shooting)
---------------------------
-Both the Server and the Queue Listener are using the excellent Winston Logging module (https://www.npmjs.com/package/winston), which by default outputs a log to the file **event.log** in the main folder. The logging can be fully customized for advanced users and any customization of the logging is recommended to be done in the file **logger.js**
+This makes it useful as a controlled local destination when testing queue delivery manually.
 
-You can set the error level required for mail to be sent in **logger.json** - Look for "level: 'error' // Set the level at which to send emails, e.g., 'error'" in the file. Refer to the Winston user manual to know which levels you can use.
+Example:
 
-If something does not work or acts weird, a good tip is to look in the log file and see any error message there.
+```bash
+curl -X POST http://127.0.0.1:8080 \
+  -H "q-name: localtest" \
+  -H "q-url: http://127.0.0.1:8090/test" \
+  -d "hello=world&source=q"
+```
 
-
-How to Test
------------
-webTest.js can be used to test the Queue system locally and starts a web server at port 8090 with event logging to STDOUT. 
-
-### Quick start verification (MySQL and SQLite)
-
-1. Start server:
-   - `node server.js`
-2. Start consumer in a second terminal:
-   - `node queue.js`
-3. Verify server health:
-   - `curl -i http://127.0.0.1:8080/test`
-   - Expected: HTTP 200 and body `Alive`.
-4. Add a message to the queue:
-   - `curl -X POST http://127.0.0.1:8080 -H "q-name: testq" -H "q-url: https://httpbin.org/post" -d "hello=world"`
-   - Expected response: `<q-id>...</q-id>`
-5. Inspect logs:
-   - `tail -f event.log`
-6. Open the admin dashboard:
-   - `http://127.0.0.1:8080/admin`
-7. Run the automated system tests:
-   - `npm test`
-
-### Database specific test notes
-
-- **MySQL:** Make sure MySQL service is running and credentials in `config/default.json` are correct.
-- **SQLite:** Make sure the path in `db.sqlite.file` is writable. The database file is created on first start.
-
-### Admin API
-
-- `GET /admin/api/health`
-- `GET /admin/api/queues`
-- `GET /admin/api/messages?queue=name&status=fail&limit=50`
-- `GET /admin/api/messages/:id`
-- `POST /admin/api/messages/:id/requeue`
-- `POST /admin/api/messages/:id/dead-letter`
-
-### Dead-letter behavior
-
-- When a message reaches terminal failure, it is moved to a queue prefixed with `consumer.deadLetter.prefix`.
-- Example: queue `billing` becomes `dead-letter.billing`.
-- Requeue from the admin API restores the original queue name and resets retry state.
-
-
-### Recommended NPM Packages
-
-These npm packages are useful when working with Q on a Test/Production server:
-
-#### frontail - Bring the server log to a webpage, password protected
-[GitHub Repository](https://github.com/mthenw/frontail)
-- Install: `sudo npm i frontail -g`
-- Usage: `frontail ./logfile.txt -p 9000 -U myUser -P myPwd`
-
-#### pm2 - Controls multiple processes very neatly
-[NPM Package](https://www.npmjs.com/package/pm2)
-- Install: `sudo npm install pm2 -g`
-- Usage: `pm2 start app.js`
-
-You can use `installAtServer.sh` to install all three services using pm2!
-
-
-
-
-
-SHORT INSTRUCTIONS
-------------------
-
-## How It Works
-
-The Q Queue System operates by both receiving and sending out HTTP Requests or Emails.
-
-You use the system by adding SPECIFIC http-headers to your standard HTTP request. This allows you to send multiple HTTP calls asynchronously, which the Queue will then receive, store, and subsequently dispatch to the designated receiver.
-
-The system is versatile and can be configured to support either HTTP, HTTPS, or email communication. If HTTPS is chosen, it is necessary to provide cert and key files for SSL encryption.
-
-Additionally, the system offers the flexibility to schedule messages to be triggered at a specified date and time.
-
-
-
-
-ADD YOUR HTTP REQUEST TO THE QUEUE
-----------------------------------
-Send a HTTP or HTTPS request to: [yoursite].com:[portnumber] with your normal request, using your **normal** http headers and **body-parameters**. Http **POST** and **GET** are supported as of today. 
-
-Required http headers:
------------------------------
-The below http-headers **must** be added to the request, if any of these are empty, the request will fail.
-
-| Header  | Description                             | Example                                |
-|---------|-----------------------------------------|----------------------------------------|
-| `Q-url` | The Destination URL                     | e.g., https://[yoursite].com/sms       |
-| `Q-name`| The Queue Name                          | e.g., custom_queue                    |
-
-Ensure that these headers are included in your request. If any of these headers are empty, the request will fail.
-
-If the Queue Name does not exist it will be automatically created.
-
-
-**Normal http headers**
-All HTTP headers will be saved and forwarded to the **Q-url** address.
-
-### HTTP GET Parameters
-To initiate a GET request, direct your call to `[yoursite].com`, **followed** by the request string. For example: `http://[yoursite].com:8080?p1=20&p2=30&info=text`.
-
-The parameters `p1`, `p2`, and `info` will be preserved in the message queue and subsequently sent to the destination host as part of the **GET** request.
-
-### HTTP POST Parameters
-
-All standard HTTP body parameters will be retained in the queue and then relayed to the URL specified in the HTTP header: **Q-url**.
-
-**Note:** Avoid using the HTTP body parameter name "_params," as it will be interpreted as the entire request, adhering to the rules outlined below.
-
-
-
-Multiple requests from single request
--------------------------------------
-Rather than using form-data parameters, you have the option to send a JSON array string with the parameter name "_params". This JSON structure can encompass multiple JSON structures, allowing you to send multiple requests to the queue within a single request.
-
-To enable multiple requests, you should send the JSON structures as an array, beginning with "[" and concluding with "]". Below is an example illustrating the required structure:
+Expected behavior:
+- Q accepts the request and returns a `<q-id>`
+- `queue.js` picks up the message
+- `webTest.js` prints the forwarded request
+- the message shows up as successful in `/admin`
+
+# How Q Works
+
+Q has two long-running processes:
+
+- `server.js`
+  - validates the request
+  - parses headers and body
+  - stores the job in the queue database
+- `queue.js`
+  - reads available jobs from the database
+  - dispatches them to the destination
+  - retries or dead-letters failed jobs
+
+The queue is driven by HTTP headers. You send a normal HTTP request to Q, but add Q-specific headers that describe where and how the request should be delivered later.
+
+## End-to-end flow
+
+This is the normal path through the system:
+
+1. A client sends a request to `server.js`.
+2. The request includes at least:
+   - `Q-name`
+   - `Q-url`
+3. `server.js` validates the request and stores it in the database.
+4. Q immediately returns a queue id to the client:
+   - `<q-id>123</q-id>`
+5. `queue.js` polls for messages that are ready to be delivered.
+6. `queue.js` dispatches the outbound request to the URL stored in `Q-url`.
+7. The destination service responds:
+   - `200 OK` means success
+   - non-`200` means failure
+8. On success:
+   - success stats are updated
+   - success actions run, for example `DELETE`
+   - the event is written to the activity log
+9. On failure:
+   - retry state is updated
+   - the job is retried later if retries remain
+   - if retries are exhausted, the job is marked as failed and can move to dead-letter
+10. The admin UI at `/admin` shows:
+   - current queue/message state
+   - recent activity, including messages that were already deleted after success
+
+## Concrete example
+
+Example:
+
+1. You send a request to Q with:
+   - `Q-name: billing`
+   - `Q-url: https://example.com/webhook`
+2. Q stores the request in queue `billing`.
+3. `queue.js` later sends the real outbound request to `https://example.com/webhook`.
+4. If the receiver returns `200`, the message is marked successful.
+5. If the queue is configured with success action `DELETE`, the message is removed from the live message table.
+6. Even if it disappears from the live queue quickly, the Activity section in `/admin` still shows that it happened.
+
+# Request Format
+
+## Required headers
+
+These headers must be present:
+
+| Header | Description | Example |
+|---|---|---|
+| `Q-url` | Destination URL or `email` | `https://example.com/webhook` |
+| `Q-name` | Queue name | `billing` |
+
+If `Q-name` does not exist, it is created automatically.
+
+## Normal request body
+
+- `POST`: normal body fields are stored and forwarded later
+- `GET`: query parameters are stored and forwarded later
+
+## Optional headers
+
+| Header | Description | Default |
+|---|---|---|
+| `Q-send-interval` | Delay in seconds between jobs in the same queue | queue default |
+| `Q-retries` | Max retry count | queue default |
+| `Q-retry-interval` | Seconds between retries | queue default |
+| `Q-success` | Action on success | queue default |
+| `Q-fail` | Action on failure | queue default |
+| `Q-priority` | Priority, `1` is highest | `5` |
+| `Q-schedule` | Scheduled delivery datetime | immediate |
+
+## Multiple jobs in one request
+
+If you send a JSON array string in `_params`, Q creates one queued message per object.
+
+Example:
 
 ```json
 [
-    { "name": "arnold", "age": "42"},
-    { "name": "john", "age": "32"}
+  { "name": "arnold", "age": "42" },
+  { "name": "john", "age": "32" }
 ]
 ```
 
-This example defines two requests to be sent to the queue, with the post variables “name” and “age”.
+# Delivery Semantics
 
+The destination service should return:
 
+- `200 OK` when the job is successfully handled
+- any non-200 status when the job failed and should be retried or failed
 
-Expected answer from the destination server
--------------------------------------------
-The Queue Sender **expects** the use of HTTP error codes by the destination server. This implies that the target server **MUST** respond with **HTTP 200 OK** if the message was received and processed successfully. This serves as a crucial indicator to the Queue Sender that the message was sent successfully!
+This is important. Q treats non-200 responses as delivery failures.
 
-It is imperative to **configure** the destination server to respond with any **HTTP Error Codes** (any code except for **HTTP 200 OK**) in case of any issues. This approach ensures that the Queue Sender is informed of failures, allowing it to implement appropriate strategies, such as **waiting for a specified duration** before retrying or eventually marking the operation as a failure.
+This default behavior can be overridden in config with:
+- `consumer.httpResponseCodesOK`
+- `consumer.httpResponseCodesFail`
 
-You must incorporate these response configurations in your destination server to establish effective communication between the Queue Sender and the server.
+Rules:
+- if `httpResponseCodesOK` contains one or more codes, only those codes are treated as success
+- if `httpResponseCodesOK` is empty and `httpResponseCodesFail` contains one or more codes, every code except the fail-list is treated as success
+- if both are empty, Q falls back to the default behavior: only `200` is success
 
+Priority when both lists are set:
+- `httpResponseCodesOK` has precedence
+- if a code exists in `httpResponseCodesOK`, it is treated as success
+- if a code does not exist in `httpResponseCodesOK`, it is treated as fail
+- if a code exists in both lists, it is still treated as success (OK list wins)
 
- 
-Send Email with the Q-system!
------------------------------ 
-Simple mail sending.
-To send emails with the system, the Q-url header MUST be set to “email” (Without the “) You must also supply Q-to, Q-from, Q-subject and Q-body for the email in the http headers.
+Examples:
 
-When sending emails with the system, include the following headers in the HTTP request:
+```json
+"httpResponseCodesOK": "200,201,401",
+"httpResponseCodesFail": "500,501,502"
+```
 
-| Header       | Description                                              | Example                        |
-|--------------|----------------------------------------------------------|--------------------------------|
-| `Q-url`      | MUST be set to "email" (without quotes ")                | email                          |
-| `Q-to`       | A single recipient email address                         | john@yoursite.com              |
-| `Q-from`     | A single sender email address                             | anna@yoursite.com             |
-| `Q-subject`  | The subject of the mail                                   | "Important Mail"              |
-| `Q-body`     | The body of the mail. Use \n for a newline                | "Hello!\nThis is a test mail" |
+This means:
+- `200`, `201` and `401` are success
+- everything else is fail
 
+```json
+"httpResponseCodesOK": "",
+"httpResponseCodesFail": "500,501,502"
+```
 
+This means:
+- every code is success except `500`, `501` and `502`
 
-Advanced Options:
------------------
-- Additional options may be available based on your specific use case.
+```json
+"httpResponseCodesOK": "200",
+"httpResponseCodesFail": ""
+```
 
+This means:
+- only `200` is success
+- everything else is fail
 
-ACTION for Success or Failure
------------------------------
+# Success and Failure Actions
 
-When a message is delivered successfully or encounters a failure, one or more ACTIONS are triggered. The ACTION is defined by a string that is parsed.
+An action string can contain one or more comma-separated actions:
 
-Multiple ACTIONs can be separated by a comma (,). Note that, for this reason, you cannot use a comma in the email/http/queue section.
+- `DELETE`
+- an email address
+- an `http...` URL
+- another queue name
 
-- If the ACTION is DELETE, the message will be removed from the Queue. Use with caution!
-- If the ACTION contains a valid email address, an email will be sent to that address.
-- If the ACTION starts with http, a Http GET Request will be made to that address.
+Examples:
 
-If the ACTION contains the word "queue," the message will be moved to a queue with that name, setting the status to "moved."
+| Action string | Meaning |
+|---|---|
+| `DELETE` | Delete message after success |
+| `ops@example.com` | Send an email notification |
+| `https://example.com/done` | Trigger follow-up HTTP GET |
+| `error-queue` | Move message to another queue |
+| `DELETE,ops@example.com` | Run multiple actions |
 
-#### Example of ACTION strings:
+Important:
+- `DELETE` and move-to-queue should not be combined conceptually
+- if a message is deleted after success, it may disappear from the live message list quickly, but it will still appear in the activity log in `/admin`
 
-| Action String                                | Description                                               |
-| -------------------------------------------- | --------------------------------------------------------- |
-| DELETE,http://www.url.com/success/,good@success.com | 1. Delete the message upon completion.<br>2. Send a call to http://www.url.com/success/<br>3. Send a mail to good@success.com |
-| http://www.url.com/success/,good@success.com,newQueue | 1. Send a call to http://www.url.com/success/<br>2. Send a mail to good@success.com<br>3. Send the message to a queue named newQueue |
-| error-queue                                 | Send the message to a queue named error-queue              |
+# Email Jobs
 
-**Note:** You cannot use both DELETE and move a message to a queue simultaneously!
+To send email through Q:
 
+- set `Q-url: email`
+- include:
+  - `Q-to`
+  - `Q-from`
+  - `Q-subject`
+  - `Q-body`
 
-Extended Optional http headers
-------------------------------
-To customize the behavior for individual messages, you can utilize the following optional HTTP headers:
+Example:
 
-| Header            | Description                                       | Default Value |
-|-------------------|---------------------------------------------------|---------------|
-| `Q-send-interval` | Time interval in seconds                         | 3             |
-| `Q-retries`       | Number of max retries on timeout or failed answer | 3             |
-| `Q-retry-interval`| Time interval in seconds for retries              | 120           |
-| `Q-success`       | Action upon successful delivery                   | [ACTION]      |
-| `Q-fail`          | Action upon delivery failure                      | [ACTION]      |
-| `Q-priority`      | Priority of the message (1 is highest)            | 5             |
-| `Q-schedule`      | Scheduled delivery datetime (YYYY-MM-DD HH:MM:SS(NULL)) | -         |
+| Header | Example |
+|---|---|
+| `Q-url` | `email` |
+| `Q-to` | `john@example.com` |
+| `Q-from` | `noreply@example.com` |
+| `Q-subject` | `Important Mail` |
+| `Q-body` | `Hello!\nThis is a test mail` |
 
-These headers allow you to tailor the handling of individual messages, providing flexibility and control over the queue processing. Adjust these parameters as needed to meet the specific requirements of your use case.
+# Admin UI And API
 
+## Dashboard
 
+Open:
 
-Response from the Queue Server
-------------------------------
-If everything went well, you should get an answer like:
-<q-id>[nn]</q-id>
+```text
+http://127.0.0.1:8080/admin
+```
 
-where [nn] is the unique ID that your request got in the queue-system.
+The dashboard shows:
+- queue totals
+- active waiting/error counts
+- current messages
+- recent activity log
+- requeue and dead-letter controls
 
-If you made something wrong, misspelled or forgot a required parameter or so, you will get
-**Nope**
-as response. The answer is deliberately made very vague, for hackers, bots or other unauthorized access. 
+## Admin API
 
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/admin/api/health` | Basic health info |
+| `GET` | `/admin/api/queues` | Queue summary |
+| `GET` | `/admin/api/messages?queue=name&status=fail&limit=50` | Filtered message list |
+| `GET` | `/admin/api/messages/:id` | Single message |
+| `GET` | `/admin/api/activity` | Recent activity log |
+| `POST` | `/admin/api/messages/:id/requeue` | Requeue message |
+| `POST` | `/admin/api/messages/:id/dead-letter` | Move message to dead-letter queue |
 
-### Queue Settings
+## Realtime updates
 
-These settings apply to all messages in the queue, stored in the database table "Queueinfo" along with their default values given in parentheses.
+The admin page updates automatically using server-sent events.
 
-| Setting        | Description                                       | Default Value |
-| -------------- | ------------------------------------------------- | ------------- |
-| **SendInterval** | Time interval in seconds                         | 3             |
-| **Retries**      | Number of retries on timeout or request error     | 3             |
-| **RetryInterval**| Time interval in seconds for retries              | 120           |
-| **Success**     | [ACTION] (Default: DELETE)                        | DELETE        |
-| **Fail**        | [ACTION] (Default: NULL)                          | NULL          |
+That means:
+- new jobs should appear quickly
+- retries and dead-letter moves should appear quickly
+- successful jobs that are immediately deleted will still appear in the activity section
 
-Adjust these settings in the "Queueinfo" table based on your specific requirements.
+# Dead-letter Behavior
 
+When a job reaches terminal failure:
 
+- it gets status `fail`
+- it can be moved to a dead-letter queue
+- dead-letter queue names are prefixed with `consumer.deadLetter.prefix`
 
+Example:
+- `billing` becomes `dead-letter.billing`
 
+Requeue from the admin API:
+- restores the original queue name
+- resets retry state
+- schedules the job again
 
+# Configuration Reference
 
-LICENSING
----------
+This section is more detailed than the quick start and is meant as the long-term reference.
+
+## `db`
+
+| Property | Description | Example |
+|---|---|---|
+| `client` | Backend: `mysql` or `sqlite` | `sqlite` |
+| `host` | MySQL host | `localhost` |
+| `user` | MySQL user | `root` |
+| `password` | MySQL password | `pass` |
+| `database` | MySQL database name | `queue` |
+| `sqlite.file` | SQLite file path | `./data/queue.sqlite` |
+
+## `server`
+
+| Property | Description | Example |
+|---|---|---|
+| `whiteListIpAdresses` | Allowed source IPs | `["127.0.0.1"]` |
+| `maxBodySizeKb` | Max incoming request size | `256` |
+| `httpPort` | HTTP port | `8080` |
+| `httpsPort` | HTTPS port | `8081` |
+| `ssl.active` | Enable HTTPS | `false` |
+| `ssl.keyFile` | TLS key path | `ssl/key.pem` |
+| `ssl.certFile` | TLS cert path | `ssl/cert.pem` |
+
+## `consumer`
+
+| Property | Description | Example |
+|---|---|---|
+| `sleepForSeconds` | Poll interval | `1` |
+| `maxConcurrent` | Max concurrent dispatches | `4` |
+| `minIntervalPerHostMs` | Minimum delay between requests to same host | `0` |
+| `httpResponseCodesOK` | Success response codes, as comma-separated string or array | `"200"` |
+| `httpResponseCodesFail` | Explicit failure response codes, as comma-separated string or array | `""` |
+| `deadLetter.active` | Enable dead-letter flow | `true` |
+| `deadLetter.prefix` | Prefix for dead-letter queues | `dead-letter.` |
+
+## `email`
+
+| Property | Description | Example |
+|---|---|---|
+| `active` | Enable email sending | `false` |
+| `setting.user` | SMTP user | `user@example.com` |
+| `setting.password` | SMTP password | `password` |
+| `setting.host` | SMTP host | `smtp.example.com` |
+| `setting.port` | SMTP port | `587` |
+| `setting.ssl` | Use SSL | `false` |
+| `setting.tls.rejectUnauthorized` | TLS validation behavior | `false` |
+| `sender` | Sender email address | `noreply@example.com` |
+
+# Troubleshooting
+
+## Logs
+
+Q writes logs to `event.log`.
+
+Useful command:
+
+```bash
+tail -f event.log
+```
+
+## If jobs do not show in `/admin`
+
+Check:
+- `server.js` is running
+- `queue.js` is running
+- the request returned a `<q-id>`
+- the source IP is whitelisted
+- the job may already have completed and been deleted, so check the Activity section in `/admin`
+
+## If jobs never leave the queue
+
+Check:
+- destination URL is reachable from the machine running Q
+- destination service returns `200 OK` on success
+- retry settings are not too aggressive or too strict
+
+## If destination returns `201` (or other non-200) but Q marks it as fail
+
+By default, Q treats only `200` as success.  
+To accept additional success codes, edit `config/default.json`:
+
+```json
+"consumer": {
+  "httpResponseCodesOK": "200,201",
+  "httpResponseCodesFail": ""
+}
+```
+
+Then restart:
+
+```bash
+node server.js
+node queue.js
+```
+
+## If you want explicit success and fail code lists
+
+Example:
+
+```json
+"consumer": {
+  "httpResponseCodesOK": "200,201,401",
+  "httpResponseCodesFail": "500,501,502"
+}
+```
+
+Behavior:
+- `200`, `201`, `401` => success
+- everything else => fail
+
+## If you want all codes to be OK except specific fail codes
+
+Example:
+
+```json
+"consumer": {
+  "httpResponseCodesOK": "",
+  "httpResponseCodesFail": "500,501,502"
+}
+```
+
+Behavior:
+- all codes except `500`, `501`, `502` => success
+
+## If you want strict default behavior (only `200` is OK)
+
+Example:
+
+```json
+"consumer": {
+  "httpResponseCodesOK": "200",
+  "httpResponseCodesFail": ""
+}
+```
+
+Behavior:
+- only `200` => success
+- all other codes => fail
+
+Note:
+- values can be comma-separated strings (`"200,201"`) or arrays (`[200, 201]`)
+- after config changes, restart both processes
+
+## If using MySQL
+
+Check:
+- MySQL service is running
+- credentials in `config/default.json` are correct
+- schema from [sql/create.sql](/Users/gorano/temp/source/q/sql/create.sql) is installed
+
+## If using SQLite
+
+Check:
+- `db.sqlite.file` points to a writable directory
+- the database file is not accidentally committed or locked by external tooling
+
+## If admin timestamps look wrong
+
+If Activity shows raw timestamps, make sure you run the latest code and hard-refresh `/admin`.
+
+Checklist:
+- stop old processes
+- start `node server.js`
+- start `node queue.js`
+- browser hard refresh (`Cmd+Shift+R` / `Ctrl+F5`)
+
+# Useful Tools
+
+These are optional.
+
+## frontail
+
+Bring the log to a web page.
+
+Install:
+
+```bash
+sudo npm i frontail -g
+```
+
+Usage:
+
+```bash
+frontail ./event.log -p 9000 -U myUser -P myPwd
+```
+
+## pm2
+
+Process manager for long-running services.
+
+Install:
+
+```bash
+sudo npm install pm2 -g
+```
+
+Usage:
+
+```bash
+pm2 start server.js
+pm2 start queue.js
+```
+
+`installAtServer.sh` can be used as a starting point for server installation.
+
+# License
 
 ## Fair Source License - Version 1.0
 
 This project is licensed under the Fair Source License - Version 1.0.
 
-### You are free to:
+### You are free to
 
-- **Use**: Anyone can use this software for free.
+- use the software for free
 
-### Commercial Use:
+### Commercial use
 
-- **For individuals, small businesses, and non-profits**: Use of this software is free for any purpose.
+- individuals, small businesses and non-profits: free to use
+- corporations with annual revenue over $1 million USD: commercial license required
 
-- **For corporations with annual revenue over $1 million USD**: A commercial license is required. Contact Göran Johansson at realdepeh@hotmail.com for licensing inquiries.
-
-Göran Johansson retains all rights to commercial licensing of this software.
-
-Please refer to the [Fair Source License - Version 1.0](https://opensource.org/licenses/Fair) for the full text and details.
-
-For licensing inquiries, please contact:
-- Göran Johansson
-- Email: realdepeh@hotmail.com
-- GitHub: [https://github.com/depeh](https://github.com/depeh)
+Contact:
+- Goran Johansson
+- realdepeh@hotmail.com
+- https://github.com/depeh

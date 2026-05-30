@@ -6,10 +6,76 @@ Attribution: Goran Johansson, realdepeh@hotmail.com, https://github.com/depeh
 
 var require = require("./rq");
 
+var config = require('./config');
 var httpClient = require("./httpClient");
 var logger = require('./logger');
 var result = require('./result');
 var common = require('./common');
+
+function parseResponseCodeConfig(value)
+{
+	if (value === undefined || value === null || value === "")
+	{
+		return [];
+	}
+
+	if (Array.isArray(value))
+	{
+		return value.map(function(item)
+		{
+			return parseInt(item, 10);
+		}).filter(function(item)
+		{
+			return Number.isInteger(item);
+		});
+	}
+
+	return String(value).split(',').map(function(item)
+	{
+		return parseInt(item.trim(), 10);
+	}).filter(function(item)
+	{
+		return Number.isInteger(item);
+	});
+}
+
+function getAcceptedResponseCodes()
+{
+	if (config.has('consumer.httpResponseCodesOK'))
+	{
+		return parseResponseCodeConfig(config.get('consumer.httpResponseCodesOK'));
+	}
+
+	return [200];
+}
+
+function getRejectedResponseCodes()
+{
+	if (config.has('consumer.httpResponseCodesFail'))
+	{
+		return parseResponseCodeConfig(config.get('consumer.httpResponseCodesFail'));
+	}
+
+	return [];
+}
+
+function isSuccessStatus(statusCode)
+{
+	var acceptedCodes = getAcceptedResponseCodes();
+	var rejectedCodes = getRejectedResponseCodes();
+
+	if (acceptedCodes.length > 0)
+	{
+		return acceptedCodes.indexOf(statusCode) > -1;
+	}
+
+	if (rejectedCodes.length > 0)
+	{
+		return rejectedCodes.indexOf(statusCode) === -1;
+	}
+
+	return statusCode === 200;
+}
 
 function sanitizeHeaders(headersJson)
 {
@@ -55,7 +121,7 @@ function handleHttp(id, uri, verb, headers, params, done)
 			return;
 		}
 
-		if (response.statusCode != 200)
+		if (!isSuccessStatus(response.statusCode))
 		{
 			logger.warn("Msg #" + id + " http error " + response.statusCode);
 			result.handleError(id, body, response.statusCode, false, done);

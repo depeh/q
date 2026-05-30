@@ -28,6 +28,8 @@
 		"sleepForSeconds": 1,
 		"maxConcurrent": 4,
 		"minIntervalPerHostMs": 0,
+		"httpResponseCodesOK": "200",
+		"httpResponseCodesFail": "",
 		"deadLetter": {
 			"active": true,
 			"prefix": "dead-letter."
