@@ -15,7 +15,9 @@ Concept, system design and code by Göran Johansson (https://github.com/depeh)
 
 **2. Easy Configuration:**
    - Quickly set up Q by copying and customizing the provided `config/default.json` file.
-   - Create a MySQL database using the schema outlined in `sql/create.sql`.
+   - Choose database backend: `mysql` or `sqlite`.
+   - For MySQL, create a database using the schema in `sql/create.sql`.
+   - For SQLite, Q auto-creates database file and tables at startup.
 
 **3. Testing Capabilities:**
    - Utilize `webTest.js` to perform local tests, initiating a web server with event logging for thorough testing and debugging.
@@ -44,16 +46,27 @@ Getting Started / SETUP / INSTALL
 ### PREREQUISITES
 Install Node.JS - Go here for more info: https://nodejs.org/
 
-Install MySQL - Go here for more info: https://dev.mysql.com/downloads/installer/
+Install MySQL only if you plan to run with `db.client = "mysql"`:
+https://dev.mysql.com/downloads/installer/
 
 
 ### SETUP & RUN
-1. Create a MySQL database and set it up using the provided SQL-code in `sql/create.sql`.
-2. Find and copy `config/default.sample.json` file into `config/default.json` - and customize the `config/default.json` file to your needs, see the section "Configuring **default.json**" below.
-3. Go to your home folder (q) in your Command Line.
-4. Install NPM Packages (command: npm install)
-5. Launch the HTTP/HTTPS Server process (command: node server.js)
-6. Launch the Queue Consumer process (command: node queue.js)
+1. Copy `config/default.sample.json` to `config/default.json`.
+2. Install NPM packages:
+   - `npm install`
+3. Choose one database backend:
+   - **MySQL**
+     1. Set `"db.client": "mysql"` in `config/default.json`.
+     2. Create a MySQL database and run `sql/create.sql`.
+     3. Set `db.host`, `db.user`, `db.password`, `db.database`.
+   - **SQLite**
+     1. Set `"db.client": "sqlite"` in `config/default.json`.
+     2. Set `db.sqlite.file` (for example `./data/queue.sqlite`).
+     3. No manual schema step is needed. Tables are created automatically.
+4. Launch the HTTP/HTTPS server process:
+   - `node server.js`
+5. Launch the queue consumer process:
+   - `node queue.js`
 
 Discover the power of Q, your go-to Request Queue System for efficiently managing requests, ensuring reliability, and simplifying your workflow. Dive into a world of seamless communication and scheduling with Q!
 
@@ -67,10 +80,35 @@ This document provides a quick explanation of how to set up the configuration in
 
 | Property  | Description                                       | Example Value |
 |-----------|---------------------------------------------------|---------------|
+| client    | Database backend. Supported values: `mysql`, `sqlite` | mysql |
 | host      | The host address/IP of the MySQL database server  | localhost     |
 | user      | The database user with access to the database     | root          |
 | password  | Password for the database user                    | password      |
 | database  | The name of the database to set up                | queue         |
+| sqlite.file | SQLite file path when `client` is `sqlite`     | ./data/queue.sqlite |
+
+### Example db config for MySQL
+
+```json
+"db": {
+  "client": "mysql",
+  "host": "localhost",
+  "user": "root",
+  "password": "pass",
+  "database": "queue"
+}
+```
+
+### Example db config for SQLite
+
+```json
+"db": {
+  "client": "sqlite",
+  "sqlite": {
+    "file": "./data/queue.sqlite"
+  }
+}
+```
 
 ## server
 
@@ -146,6 +184,26 @@ If something does not work or acts weird, a good tip is to look in the log file 
 How to Test
 -----------
 webTest.js can be used to test the Queue system locally and starts a web server at port 8090 with event logging to STDOUT. 
+
+### Quick start verification (MySQL and SQLite)
+
+1. Start server:
+   - `node server.js`
+2. Start consumer in a second terminal:
+   - `node queue.js`
+3. Verify server health:
+   - `curl -i http://127.0.0.1:8080/test`
+   - Expected: HTTP 200 and body `Alive`.
+4. Add a message to the queue:
+   - `curl -X POST http://127.0.0.1:8080 -H "q-name: testq" -H "q-url: https://httpbin.org/post" -d "hello=world"`
+   - Expected response: `<q-id>...</q-id>`
+5. Inspect logs:
+   - `tail -f event.log`
+
+### Database specific test notes
+
+- **MySQL:** Make sure MySQL service is running and credentials in `config/default.json` are correct.
+- **SQLite:** Make sure the path in `db.sqlite.file` is writable. The database file is created on first start.
 
 
 ### Recommended NPM Packages
@@ -365,5 +423,4 @@ For licensing inquiries, please contact:
 - Göran Johansson
 - Email: realdepeh@hotmail.com
 - GitHub: [https://github.com/depeh](https://github.com/depeh)
-
 

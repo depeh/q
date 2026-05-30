@@ -16,7 +16,8 @@
 		"request": "2.79.0",
 		"url-parse": "^1.5.10",
 		"winston": "^3.11.0",
-		"winston-mail": "^2.0.0"
+		"winston-mail": "^2.0.0",
+		"sqlite3": "^5.1.7"
 	},
 	"author": "Göran Johansson",
 	"license": "See License in license.txt"

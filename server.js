@@ -89,7 +89,7 @@ function handleServer(req, res)
 	var referer = headers.referer;
 	var method = req['method'];
 	var qpriority = common.getHeader(headers, 'q-priority', 5);
-	var userAgent = ['user-agent'];
+	var userAgent = headers['user-agent'];
 
 	var ip = common.getIpFromReq(req);
 

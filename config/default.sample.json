@@ -1,43 +1,43 @@
 {
-	"db":
-	{
+	"db": {
 		"host": "localhost",
 		"user": "root",
 		"password": "pass",
-		"database": "queue" 
+		"database": "queue",
+		"client": "mysql",
+		"sqlite": {
+			"file": "./data/queue.sqlite"
+		}
 	},
-	"server":
-	{
-		"whiteListIpAdresses": ["::1", "127.0.0.1", "8.8.8.8"],
-		"httpPort": 8080, 
+	"server": {
+		"whiteListIpAdresses": [
+			"::1",
+			"127.0.0.1",
+			"8.8.8.8"
+		],
+		"httpPort": 8080,
 		"httpsPort": 8081,
-		"ssl":
-		{
-			"active": false, 
+		"ssl": {
+			"active": false,
 			"keyFile": "ssl/key.pem",
 			"certFile": "ssl/cert.pem"
 		}
 	},
-	"consumer":
-	{
+	"consumer": {
 		"sleepForSeconds": 1
 	},
-	"email":
-	{
+	"email": {
 		"active": false,
-		"setting":
-		{
+		"setting": {
 			"user": "username",
 			"password": "123456",
 			"host": "domain.com",
 			"port": 587,
 			"ssl": false,
-			"tls":
-			{
+			"tls": {
 				"rejectUnauthorized": false
 			}
 		},
 		"sender": "mail@domain.com"
 	}
-
 }

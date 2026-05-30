@@ -30,14 +30,12 @@ function handleAction(actionStr, id, result, body, info)
 	{
 		var action = actionArray[i].trim();
 
-		if (action == "DELETE" && result == common.statsType.SUCCEEDED)
-		{
-			deleted = true;
-			if (deleteMessageById(id, result))
+			if (action == "DELETE" && result == common.statsType.SUCCEEDED)
 			{
+				// DELETE is async; mark as deleted immediately to prevent subsequent MOVE actions.
 				deleted = true;
+				deleteMessageById(id);
 			}
-		}
 		else if (common.validateEmail(action))
 		{
 			sendEmail(action, id, result, body, info);
@@ -90,12 +88,12 @@ function sendHttpMessage(uri, id, result)
 			return;
 		}
 
-		var status = response.statusCode;
-		if (status != 200)
-		{
-			logger.warn("Msg #" + id + " Action. Error while sending http for " + result + " msg. http statuscode: " + error);
-			return;
-		}
+			var status = response.statusCode;
+			if (status != 200)
+			{
+				logger.warn("Msg #" + id + " Action. Error while sending http for " + result + " msg. http statuscode: " + status);
+				return;
+			}
 
 		// If the status is ok, then do SUCCESS measures and then delete the queue item ID
 		logger.info("Msg #" + id + " Action. Success on sending http for " + result + " msg. Response: " + body);
@@ -132,32 +130,12 @@ function sendEmail(mail, id, result, body, info)
 
 function moveMessageToQueue(id, queue)
 {
-	var query = conn.query("UPDATE Message SET Queue=?, Updated=NOW(), Status='" + common.messageStatus.MOVED + "' WHERE id=?", [queue, id], function(error, results, fields)
-	{
-		if (error)
-		{
-			logger.error(query.sql, error.message);
-			return;
-		};
-
-	});
-
+	db.moveMessageToQueue(id, queue);
 }
 
 function deleteMessageById(id)
 {
-	var query = conn.query("DELETE FROM Message WHERE id=?", id, function(error, results, fields)
-	{
-		if (error)
-		{
-			logger.error(query.sql, error.message);
-			return;
-		};
-
-		logger.info("Msg #" + id + " DELETED!");
-		return true;
-	});
-
+	db.deleteMessageById(id);
 }
 
 
