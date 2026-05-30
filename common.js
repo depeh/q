@@ -66,6 +66,51 @@ exports.statsType = {
 	FAILED: "Failed"
 }
 
+exports.getDeadLetterPrefix = function()
+{
+	if (config.has('consumer.deadLetter.prefix'))
+	{
+		return config.get('consumer.deadLetter.prefix');
+	}
+
+	return "dead-letter.";
+}
+
+exports.isDeadLetterQueue = function(queueName)
+{
+	if (!queueName)
+	{
+		return false;
+	}
+
+	return queueName.indexOf(exports.getDeadLetterPrefix()) === 0;
+}
+
+exports.getDeadLetterQueueName = function(queueName)
+{
+	if (!queueName)
+	{
+		return exports.getDeadLetterPrefix() + "unknown";
+	}
+
+	if (exports.isDeadLetterQueue(queueName))
+	{
+		return queueName;
+	}
+
+	return exports.getDeadLetterPrefix() + queueName;
+}
+
+exports.getOriginalQueueName = function(queueName)
+{
+	if (!exports.isDeadLetterQueue(queueName))
+	{
+		return queueName;
+	}
+
+	return queueName.substr(exports.getDeadLetterPrefix().length);
+}
+
 exports.initMail = function()
 {
 	var nodemailer = require("nodemailer");

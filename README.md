@@ -20,7 +20,8 @@ Concept, system design and code by Göran Johansson (https://github.com/depeh)
    - For SQLite, Q auto-creates database file and tables at startup.
 
 **3. Testing Capabilities:**
-   - Utilize `webTest.js` to perform local tests, initiating a web server with event logging for thorough testing and debugging.
+   - Run `npm test` to execute the built-in end-to-end system tests.
+   - Utilize `webTest.js` to perform additional local tests with event logging.
 
 **4. Recommended NPM Packages:**
    - Enhance your Q experience on test and production servers with useful packages like *frontail* and *pm2* for streamlined logging and process management.
@@ -39,6 +40,11 @@ Concept, system design and code by Göran Johansson (https://github.com/depeh)
 
 **8. Security Measures:**
    - Q's response system ensures security by providing vague error messages in case of misconfigurations, misspellings, or unauthorized access attempts.
+
+**9. Operational Tooling:**
+   - Built-in admin API and dashboard at `/admin`.
+   - Dead-letter support with requeue from the admin API.
+   - Consumer concurrency and per-host rate limiting controls.
 
 Getting Started / SETUP / INSTALL
 ---------------------------------
@@ -115,6 +121,7 @@ This document provides a quick explanation of how to set up the configuration in
 | Property               | Description                                                              | Example Value                |
 |------------------------|--------------------------------------------------------------------------|------------------------------|
 | whiteListIpAddresses   | An array of IP addresses allowed to access the Queue Server               | ["::1", "127.0.0.1", "8.8.8.8"] |
+| maxBodySizeKb          | Maximum incoming request body size in kilobytes                           | 256                          |
 | httpPort               | The HTTP port number for the server to listen at                           | 8080                         |
 | httpsPort              | The HTTPS port number for the server (requires ssl/active to be true)    | 8081                         |
 | **ssl**                | **Configuration for SSL**                                               | **Example Value**            |
@@ -127,6 +134,10 @@ This document provides a quick explanation of how to set up the configuration in
 | Property            | Description                                                   | Example       |
 |---------------------|---------------------------------------------------------------|---------------|
 | sleepForSeconds     | The number of seconds the Queue Handler should sleep           | 1             |
+| maxConcurrent       | Maximum number of messages dispatched in parallel              | 4             |
+| minIntervalPerHostMs| Minimum delay between outgoing requests to the same host       | 0             |
+| deadLetter.active   | Move permanently failed messages to a dead-letter queue        | true          |
+| deadLetter.prefix   | Prefix used for dead-letter queue names                        | dead-letter.  |
 
 ## email
 
@@ -199,11 +210,30 @@ webTest.js can be used to test the Queue system locally and starts a web server 
    - Expected response: `<q-id>...</q-id>`
 5. Inspect logs:
    - `tail -f event.log`
+6. Open the admin dashboard:
+   - `http://127.0.0.1:8080/admin`
+7. Run the automated system tests:
+   - `npm test`
 
 ### Database specific test notes
 
 - **MySQL:** Make sure MySQL service is running and credentials in `config/default.json` are correct.
 - **SQLite:** Make sure the path in `db.sqlite.file` is writable. The database file is created on first start.
+
+### Admin API
+
+- `GET /admin/api/health`
+- `GET /admin/api/queues`
+- `GET /admin/api/messages?queue=name&status=fail&limit=50`
+- `GET /admin/api/messages/:id`
+- `POST /admin/api/messages/:id/requeue`
+- `POST /admin/api/messages/:id/dead-letter`
+
+### Dead-letter behavior
+
+- When a message reaches terminal failure, it is moved to a queue prefixed with `consumer.deadLetter.prefix`.
+- Example: queue `billing` becomes `dead-letter.billing`.
+- Requeue from the admin API restores the original queue name and resets retry state.
 
 
 ### Recommended NPM Packages
@@ -423,4 +453,3 @@ For licensing inquiries, please contact:
 - Göran Johansson
 - Email: realdepeh@hotmail.com
 - GitHub: [https://github.com/depeh](https://github.com/depeh)
-

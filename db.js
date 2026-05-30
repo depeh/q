@@ -11,7 +11,6 @@ var path = require('path');
 var config = require("./config");
 var logger = require('./logger');
 var common = require('./common');
-var doRequest = require('./doRequest');
 
 var dbClient = config.has('db.client') ? config.get('db.client') : 'mysql';
 
@@ -22,8 +21,16 @@ function isSqlite()
 
 function normalizeParams(params)
 {
-	if (params === undefined || params === null) return [];
-	if (Array.isArray(params)) return params;
+	if (params === undefined || params === null)
+	{
+		return [];
+	}
+
+	if (Array.isArray(params))
+	{
+		return params;
+	}
+
 	return [params];
 }
 
@@ -32,17 +39,43 @@ function withNow(sql)
 	return isSqlite() ? sql.replace(/NOW\(\)/g, "datetime('now')") : sql;
 }
 
+function runQuery(sql, params, callback)
+{
+	var query = conn.query(sql, params, function(error, rows)
+	{
+		if (error)
+		{
+			logger.error(query.sql, error.message);
+		}
+
+		callback(error, rows || []);
+	});
+}
+
+function logEvent(messageId, queue, eventType, status, detail, callback)
+{
+	runQuery("INSERT INTO EventLog (MessageId, Queue, EventType, Status, Detail, Created) VALUES (?, ?, ?, ?, ?, ?)", [messageId || null, queue || null, eventType || null, status || null, detail || null, new Date()], function(error, rows)
+	{
+		if (callback)
+		{
+			callback(error, rows);
+		}
+	});
+}
+
 function initSqliteSchema(db)
 {
 	var schema = [
 		"CREATE TABLE IF NOT EXISTS Message (id INTEGER PRIMARY KEY AUTOINCREMENT, Queue TEXT, Priority INTEGER, Created TEXT, CreatedBy TEXT, Url TEXT, Verb TEXT, Headers TEXT, Params TEXT, Delivery TEXT, Status TEXT, Retries INTEGER, RetryCounter INTEGER DEFAULT 0, Fails INTEGER, RetryInterval INTEGER, SendInterval INTEGER, Fail TEXT, Success TEXT, Updated TEXT, LastError TEXT)",
 		"CREATE TABLE IF NOT EXISTS QueueInfo (id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT UNIQUE, Updated TEXT, WasUpdated INTEGER DEFAULT 0, SendInterval INTEGER DEFAULT 1, Retries INTEGER DEFAULT 3, RetryInterval INTEGER DEFAULT 120, ChunkCount INTEGER DEFAULT 1, Success TEXT DEFAULT 'DELETE', Fail TEXT, Added INTEGER DEFAULT 0, Succeeded INTEGER DEFAULT 0, Failed INTEGER DEFAULT 0)",
-		"CREATE TABLE IF NOT EXISTS Stats (id INTEGER PRIMARY KEY AUTOINCREMENT, Key TEXT UNIQUE, Figure INTEGER DEFAULT 0)"
+		"CREATE TABLE IF NOT EXISTS Stats (id INTEGER PRIMARY KEY AUTOINCREMENT, Key TEXT UNIQUE, Figure INTEGER DEFAULT 0)",
+		"CREATE TABLE IF NOT EXISTS EventLog (id INTEGER PRIMARY KEY AUTOINCREMENT, MessageId INTEGER, Queue TEXT, EventType TEXT, Status TEXT, Detail TEXT, Created TEXT)"
 	];
 
 	db.serialize(function()
 	{
-		for (var i = 0; i < schema.length; i++)
+		var i;
+		for (i = 0; i < schema.length; i++)
 		{
 			db.run(schema[i]);
 		}
@@ -75,24 +108,30 @@ function connectSqlite()
 
 			params = normalizeParams(params);
 			sql = withNow(sql);
-			var upper = sql.trim().toUpperCase();
 
-			if (upper.indexOf('SELECT') === 0)
+			if (sql.trim().toUpperCase().indexOf('SELECT') === 0)
 			{
 				sqliteDb.all(sql, params, function(error, rows)
 				{
-					if (callback) callback(error, rows || [], []);
+					if (callback)
+					{
+						callback(error, rows || [], []);
+					}
 				});
-				return { sql: sql };
 			}
-
-			sqliteDb.run(sql, params, function(error)
+			else
 			{
-				if (callback)
+				sqliteDb.run(sql, params, function(error)
 				{
-					callback(error, { insertId: this ? this.lastID : 0, affectedRows: this ? this.changes : 0 }, []);
-				}
-			});
+					if (callback)
+					{
+						callback(error, {
+							insertId: this ? this.lastID : 0,
+							affectedRows: this ? this.changes : 0
+						}, []);
+					}
+				});
+			}
 
 			return { sql: sql };
 		}
@@ -102,9 +141,7 @@ function connectSqlite()
 function connectMysql()
 {
 	var mysql = require('mysql');
-
-	var connection = mysql.createConnection(
-	{
+	var connection = mysql.createConnection({
 		host: config.get('db.host'),
 		user: config.get('db.user'),
 		password: config.get('db.password'),
@@ -113,6 +150,40 @@ function connectMysql()
 
 	connection.connect();
 	return connection;
+}
+
+function ensureQueueInfo(queue, callback)
+{
+	exports.setQueueUpdated(queue);
+	if (callback)
+	{
+		callback();
+	}
+}
+
+function getMessageByIdInternal(id, callback)
+{
+	runQuery("SELECT * FROM Message WHERE id = ? LIMIT 1", [id], function(error, rows)
+	{
+		if (error)
+		{
+			callback(error);
+			return;
+		}
+
+		callback(null, rows[0] || null);
+	});
+}
+
+function updateDelivery(id, newDelivery, callback)
+{
+	runQuery("UPDATE Message SET Delivery=? WHERE id=?", [newDelivery, id], function(error)
+	{
+		if (callback)
+		{
+			callback(error);
+		}
+	});
 }
 
 exports.connect = function()
@@ -126,28 +197,17 @@ exports.connect = function()
 	return connectMysql();
 };
 
+exports.logEvent = logEvent;
+
 function setStats(key, figure)
 {
 	if (isSqlite())
 	{
-		var query = conn.query("INSERT INTO Stats(Key, Figure) VALUES(?, ?) ON CONFLICT(Key) DO UPDATE SET Figure=excluded.Figure", [key, figure], function(error)
-		{
-			if (error)
-			{
-				logger.error(query.sql, error.message);
-			}
-		});
+		runQuery("INSERT INTO Stats(Key, Figure) VALUES(?, ?) ON CONFLICT(Key) DO UPDATE SET Figure=excluded.Figure", [key, figure], function() {});
 		return;
 	}
 
-	var post = { Key: key, Figure: figure };
-	var query = conn.query("INSERT INTO Stats SET ? ON DUPLICATE KEY UPDATE Figure=?", [post, figure], function(error)
-	{
-		if (error)
-		{
-			logger.error(query.sql, error.message);
-		}
-	});
+	runQuery("INSERT INTO Stats SET ? ON DUPLICATE KEY UPDATE Figure=?", [{ Key: key, Figure: figure }, figure], function() {});
 }
 exports.setStats = setStats;
 
@@ -155,43 +215,23 @@ function increaseStats(key)
 {
 	if (isSqlite())
 	{
-		var query = conn.query("INSERT INTO Stats(Key, Figure) VALUES(?, 1) ON CONFLICT(Key) DO UPDATE SET Figure=Figure+1", [key], function(error)
-		{
-			if (error)
-			{
-				logger.error(query.sql, error.message);
-			}
-		});
+		runQuery("INSERT INTO Stats(Key, Figure) VALUES(?, 1) ON CONFLICT(Key) DO UPDATE SET Figure=Figure+1", [key], function() {});
 		return;
 	}
 
-	var post = { Key: key, Figure: 1 };
-	var query = conn.query("INSERT INTO Stats SET ? ON DUPLICATE KEY UPDATE Figure=Figure+1", post, function(error)
-	{
-		if (error)
-		{
-			logger.error(query.sql, error.message);
-		}
-	});
+	runQuery("INSERT INTO Stats SET ? ON DUPLICATE KEY UPDATE Figure=Figure+1", { Key: key, Figure: 1 }, function() {});
 }
 exports.increaseStats = increaseStats;
 
 function increaseQueueStats(queue, type)
 {
-	if (type != common.statsType.ADDED && type != common.statsType.SUCCEEDED && type != common.statsType.FAILED || queue == null || queue == undefined)
+	if ((type != common.statsType.ADDED && type != common.statsType.SUCCEEDED && type != common.statsType.FAILED) || queue == null || queue == undefined)
 	{
 		console.log("Syntax error calling increaseQueueStats");
 		return;
 	}
 
-	var sql = "UPDATE QueueInfo SET " + type + "=" + type + "+1 WHERE Name=?";
-	var query = conn.query(sql, [queue], function(error)
-	{
-		if (error)
-		{
-			logger.error(query.sql, error.message);
-		}
-	});
+	runQuery("UPDATE QueueInfo SET " + type + "=" + type + "+1 WHERE Name=?", [queue], function() {});
 }
 exports.increaseQueueStats = increaseQueueStats;
 
@@ -201,39 +241,28 @@ exports.setQueueUpdated = function(queue)
 
 	if (isSqlite())
 	{
-		var query = conn.query("INSERT INTO QueueInfo(Name, Updated, WasUpdated) VALUES(?, ?, 1) ON CONFLICT(Name) DO UPDATE SET WasUpdated=1, Updated=datetime('now')", [queue, updateDate.toISOString()], function(error)
-		{
-			if (error)
-			{
-				logger.error(query.sql, error.message);
-			}
-		});
+		runQuery("INSERT INTO QueueInfo(Name, Updated, WasUpdated) VALUES(?, ?, 1) ON CONFLICT(Name) DO UPDATE SET WasUpdated=1, Updated=datetime('now')", [queue, updateDate.toISOString()], function() {});
 		return;
 	}
 
-	var post = { Name: queue, Updated: updateDate, WasUpdated: 1 };
-	var query = conn.query("INSERT INTO QueueInfo SET ? ON DUPLICATE KEY UPDATE WasUpdated=1, Updated=NOW()", post, function(error)
-	{
-		if (error)
-		{
-			logger.error(query.sql, error.message);
-		}
-	});
-}
+	runQuery("INSERT INTO QueueInfo SET ? ON DUPLICATE KEY UPDATE WasUpdated=1, Updated=NOW()", { Name: queue, Updated: updateDate, WasUpdated: 1 }, function() {});
+};
 
 function resetQueueUpdated(id)
 {
-	var query = conn.query("UPDATE QueueInfo SET WasUpdated=0 WHERE id=?", [id], function(error)
-	{
-		if (error)
-		{
-			logger.error(query.sql, error.message);
-		}
-	});
+	runQuery("UPDATE QueueInfo SET WasUpdated=0 WHERE id=?", [id], function() {});
 }
 
 exports.push = function(queue, url, verb, headers, params, createdby, priority, specialParams, callback)
 {
+	var insertSql = "INSERT INTO Message (Queue, Priority, Url, Verb, Headers, Params, Created, Updated, CreatedBy, Status, SendInterval, Retries, RetryInterval, Success, Delivery, Fail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+	var values = [];
+	var createdDate = new Date();
+	var status = common.messageStatus.NEW;
+	var delivery = null;
+	var index = 0;
+	var firstId = 0;
+
 	priority = (priority == undefined) ? 5 : priority;
 	createdby = (createdby == undefined) ? "none" : createdby;
 
@@ -248,12 +277,7 @@ exports.push = function(queue, url, verb, headers, params, createdby, priority, 
 	var Qsuccess = common.getHeader(headers, 'q-success', null);
 	var Qfail = common.getHeader(headers, 'q-fail', null);
 	var Qschedule = common.getHeader(headers, 'q-schedule', null);
-
-	var paramsStr = JSON.stringify(params);
 	var headersStr = JSON.stringify(headers);
-	var createdDate = new Date();
-	var status = common.messageStatus.NEW;
-	var delivery = null;
 
 	if (Qschedule != null)
 	{
@@ -268,238 +292,350 @@ exports.push = function(queue, url, verb, headers, params, createdby, priority, 
 
 	if (specialParams && params != null && params != undefined)
 	{
-		var valCount = params.length;
-		if (!valCount)
+		if (!params.length)
 		{
 			callback(0);
 			return;
 		}
 
-		var insertSql = "INSERT INTO Message (Queue, Priority, Url, Verb, Headers, Params, Created, Updated, CreatedBy, Status, SendInterval, Retries, RetryInterval, Success, Delivery, Fail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-		var firstId = 0;
-		var completed = 0;
-		var failed = false;
-
-		for (var i = 0; i < params.length; i++)
+		for (index = 0; index < params.length; index++)
 		{
-			var rowParam = JSON.stringify(params[i]);
-			var row = [queue, priority, url, verb, headersStr, rowParam, createdDate, createdDate, createdby, status, Qsendinterval, Qretries, Qretryinterval, Qsuccess, delivery, Qfail];
-			conn.query(insertSql, row, function(error, results)
-			{
-				if (failed) return;
-				if (error)
-				{
-					failed = true;
-					callback(0);
-					return;
-				}
-
-				if (!firstId)
-				{
-					firstId = results.insertId;
-				}
-
-				completed = completed + 1;
-				if (completed === valCount)
-				{
-					logger.info(valCount + " messages were added to the Queue: " + queue + " - Last msg #" + results.insertId);
-					if (delivery != null)
-					{
-						logger.info(valCount + " messages will be delivered at: " + delivery);
-					}
-					increaseStats("MessagesAdded");
-					callback(firstId);
-				}
-			});
+			values.push([queue, priority, url, verb, headersStr, JSON.stringify(params[index]), createdDate, createdDate, createdby, status, Qsendinterval, Qretries, Qretryinterval, Qsuccess, delivery, Qfail]);
 		}
-
-		return;
+	}
+	else
+	{
+		values.push([queue, priority, url, verb, headersStr, JSON.stringify(params), createdDate, createdDate, createdby, status, Qsendinterval, Qretries, Qretryinterval, Qsuccess, delivery, Qfail]);
 	}
 
-	var post = [queue, priority, url, verb, headersStr, paramsStr, createdDate, createdDate, createdby, status, Qsendinterval, Qretries, Qretryinterval, Qsuccess, delivery, Qfail];
-	var query = conn.query("INSERT INTO Message (Queue, Priority, Url, Verb, Headers, Params, Created, Updated, CreatedBy, Status, SendInterval, Retries, RetryInterval, Success, Delivery, Fail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", post, function(error, results)
+	function insertNext(position)
 	{
-		if (error)
+		if (position >= values.length)
 		{
-			logger.error(query.sql, error.message);
-			callback(0);
+			logger.info(values.length + " message(s) were added to the Queue: " + queue + " - Last msg #" + firstId);
+			if (delivery != null)
+			{
+				logger.info(values.length + " message(s) will be delivered at: " + delivery);
+			}
+			increaseStats("MessagesAdded");
+			logEvent(firstId, queue, "queued", status, values.length + " message(s) queued");
+			callback(firstId);
 			return;
 		}
 
-		var id = results.insertId;
-		logger.info("Msg #" + id + " was added to the Queue: " + queue);
-		if (delivery != null)
+		runQuery(insertSql, values[position], function(error, results)
 		{
-			logger.info("Msg #" + id + " will be delivered at: " + delivery);
-		}
-		increaseStats("MessagesAdded");
-		callback(id);
-	});
-}
+			if (error)
+			{
+				callback(0);
+				return;
+			}
+
+			if (!firstId)
+			{
+				firstId = results.insertId;
+			}
+
+			insertNext(position + 1);
+		});
+	}
+
+	insertNext(0);
+};
 
 exports.getMessageCount = function(where, callback)
 {
-	var query = conn.query("SELECT count(id) as cnt FROM Message WHERE " + where, function(error, rows)
+	runQuery("SELECT count(id) as cnt FROM Message WHERE " + where, [], function(error, rows)
 	{
 		if (error)
 		{
-			logger.error(query.sql, error.message);
 			return;
 		}
-		callback(rows[0].cnt);
+
+		callback(rows[0] ? rows[0].cnt : 0);
 	});
-}
+};
 
 exports.getMessageQueueById = function(id, callback)
 {
-	var query = conn.query("SELECT Message.Queue, Message.Delivery, Message.Retries AS r1, QueueInfo.Retries AS r2, Message.RetryCounter, Message.RetryInterval AS ri1, QueueInfo.RetryInterval AS ri2, Message.Success AS s1, QueueInfo.Success AS s2, Message.Fail AS f1, QueueInfo.Fail AS f2 FROM Message, QueueInfo WHERE Message.Queue = QueueInfo.Name AND Message.id = ? LIMIT 1", [id], function(error, rows)
+	runQuery("SELECT Message.Queue, Message.Delivery, Message.Retries AS r1, QueueInfo.Retries AS r2, Message.RetryCounter, Message.RetryInterval AS ri1, QueueInfo.RetryInterval AS ri2, Message.Success AS s1, QueueInfo.Success AS s2, Message.Fail AS f1, QueueInfo.Fail AS f2 FROM Message LEFT JOIN QueueInfo ON Message.Queue = QueueInfo.Name WHERE Message.id = ? LIMIT 1", [id], function(error, rows)
 	{
 		if (error)
 		{
-			logger.error(query.sql, error.message);
 			return;
 		}
+
 		callback(rows[0]);
 	});
-}
+};
 
-function updateMessageById(id, retryCounter, updated, deliveryTime, status)
+function updateMessageById(id, retryCounter, updated, deliveryTime, status, callback)
 {
-	var query = conn.query("UPDATE Message SET RetryCounter=?, Updated=?, Delivery=?, Status=? WHERE id=?", [retryCounter, updated, deliveryTime, status, id], function(error)
+	runQuery("UPDATE Message SET RetryCounter=?, Updated=?, Delivery=?, Status=? WHERE id=?", [retryCounter, updated, deliveryTime, status, id], function(error)
 	{
-		if (error)
+		if (callback)
 		{
-			logger.error(query.sql, error.message);
+			callback(error);
 		}
 	});
 }
 exports.updateMessageById = updateMessageById;
 
-function updateMessageStatusById(id, status)
+function updateMessageStatusById(id, status, callback)
 {
-	var query = conn.query("UPDATE Message SET Updated=NOW(), Status=? WHERE id=?", [status, id], function(error)
+	runQuery("UPDATE Message SET Updated=NOW(), Status=? WHERE id=?", [status, id], function(error)
 	{
-		if (error)
+		if (callback)
 		{
-			logger.error(query.sql, error.message);
+			callback(error);
 		}
 	});
 }
 exports.updateMessageStatusById = updateMessageStatusById;
 
-function updateMessageLastErrorById(id, errorText)
+function updateMessageLastErrorById(id, errorText, callback)
 {
-	var query = conn.query("UPDATE Message SET Updated=NOW(), LastError=? WHERE id=?", [errorText, id], function(error)
+	runQuery("UPDATE Message SET Updated=NOW(), LastError=? WHERE id=?", [errorText, id], function(error)
 	{
-		if (error)
+		if (callback)
 		{
-			logger.error(query.sql, error.message);
+			callback(error);
 		}
 	});
 }
 exports.updateMessageLastErrorById = updateMessageLastErrorById;
 
-function updateDelivery(id, newDelivery)
-{
-	var query = conn.query("UPDATE Message SET Delivery=? WHERE id=?", [newDelivery, id], function(error)
-	{
-		if (error)
-		{
-			logger.error(query.sql, error.message);
-		}
-	});
-}
+exports.updateDeliveryById = updateDelivery;
 
-exports.moveMessageToQueue = function(id, queue)
+exports.moveMessageToQueue = function(id, queue, callback)
 {
-	var query = conn.query("UPDATE Message SET Queue=?, Updated=NOW(), Status=? WHERE id=?", [queue, common.messageStatus.MOVED, id], function(error)
+	ensureQueueInfo(queue, function()
 	{
-		if (error)
+		runQuery("UPDATE Message SET Queue=?, Updated=NOW(), Status=? WHERE id=?", [queue, common.messageStatus.MOVED, id], function(error)
 		{
-			logger.error(query.sql, error.message);
-		}
+			if (!error)
+			{
+				logEvent(id, queue, "moved", common.messageStatus.MOVED, "Message moved to queue " + queue);
+			}
+
+			if (callback)
+			{
+				callback(error);
+			}
+		});
 	});
 };
 
-exports.deleteMessageById = function(id)
+exports.deleteMessageById = function(id, callback)
 {
-	var query = conn.query("DELETE FROM Message WHERE id=?", [id], function(error)
+	getMessageByIdInternal(id, function(readError, row)
 	{
-		if (error)
+		runQuery("DELETE FROM Message WHERE id=?", [id], function(error)
 		{
-			logger.error(query.sql, error.message);
-			return;
-		}
-		logger.info("Msg #" + id + " DELETED!");
+			if (!error)
+			{
+				logger.info("Msg #" + id + " DELETED!");
+				logEvent(id, row ? row.Queue : null, "deleted", common.messageStatus.SUCCESS, "Message deleted after successful handling");
+			}
+
+			if (callback)
+			{
+				callback(error || readError);
+			}
+		});
 	});
 };
 
 exports.sortQueues = function()
 {
-	var query = conn.query("SELECT id, Name FROM QueueInfo WHERE WasUpdated = 1", function(error, rows)
+	runQuery("SELECT id, Name FROM QueueInfo WHERE WasUpdated = 1", [], function(error, rows)
 	{
 		if (error)
 		{
-			logger.error(query.sql, error.message);
 			return;
 		}
 
-		for (var i in rows)
+		rows.forEach(function(queueRow)
 		{
-			var id = rows[i].id;
-			var name = rows[i].Name;
-			console.log("Queue " + name + " changed, resorting...");
-			resetQueueUpdated(id);
+			var deliveryTime = new Date();
 
-			var query2 = conn.query("SELECT Message.id, Message.SendInterval AS si1, QueueInfo.SendInterval as si2 FROM Message, QueueInfo WHERE Message.Status = ? AND Message.Queue = QueueInfo.Name AND QueueInfo.id = ? ORDER BY Message.Priority, Message.Updated", [common.messageStatus.NEW, id], function(error, rows)
+			console.log("Queue " + queueRow.Name + " changed, resorting...");
+			resetQueueUpdated(queueRow.id);
+
+			runQuery("SELECT Message.id, Message.SendInterval AS si1, QueueInfo.SendInterval as si2 FROM Message JOIN QueueInfo ON Message.Queue = QueueInfo.Name WHERE Message.Status = ? AND QueueInfo.id = ? ORDER BY Message.Priority, Message.Updated", [common.messageStatus.NEW, queueRow.id], function(sortError, messageRows)
 			{
-				if (error)
+				if (sortError)
 				{
-					logger.error(query2.sql, error.message);
 					return;
 				}
 
-				var deliveryTime = new Date();
-				for (var j in rows)
+				messageRows.forEach(function(row)
 				{
-					var msgId = rows[j].id;
-					var si1 = rows[j].si1;
-					var si2 = rows[j].si2;
-					updateDelivery(msgId, deliveryTime);
-					var waitUntilNextMessage = (si1 == null) ? si2 : si1;
+					var waitUntilNextMessage = (row.si1 == null) ? row.si2 : row.si1;
+					updateDelivery(row.id, deliveryTime);
 					deliveryTime = new Date(deliveryTime.getTime() + (1000 * waitUntilNextMessage));
-				}
+				});
 			});
-		}
+		});
 	});
-}
+};
 
-exports.getMessages = function()
+exports.claimAvailableMessages = function(limit, callback)
 {
-	var query = conn.query("SELECT id, Verb, Url, Headers, Params FROM Message WHERE (status = ? OR status = ? OR status = ?) AND Delivery < NOW() ORDER BY Delivery LIMIT 1", [common.messageStatus.NEW, common.messageStatus.SCHEDULE, common.messageStatus.ERROR], function(error, rows)
+	runQuery("SELECT id, Queue, Verb, Url, Headers, Params, Delivery, Status FROM Message WHERE (Status = ? OR Status = ? OR Status = ?) AND Delivery < NOW() ORDER BY Delivery, Priority LIMIT ?", [common.messageStatus.NEW, common.messageStatus.SCHEDULE, common.messageStatus.ERROR, limit], function(error, rows)
 	{
-		if (error)
+		var claimed = [];
+
+		if (error || !rows.length)
 		{
-			logger.error(query.sql, error.message);
+			callback(error, claimed);
 			return;
 		}
 
-		for (var i in rows)
+		function claimNext(index)
 		{
-			var id = rows[i].id;
-			var verb = rows[i].Verb;
-			var url = rows[i].Url;
-			var headers = rows[i].Headers;
-			var params = rows[i].Params;
+			if (index >= rows.length)
+			{
+				callback(null, claimed);
+				return;
+			}
 
-			if (url == "email")
+			updateMessageStatusById(rows[index].id, common.messageStatus.WAITING, function(updateError)
 			{
-				doRequest.email(id, url, verb, headers, params);
-			}
-			else
-			{
-				doRequest.http(id, url, verb, headers, params);
-			}
+				if (!updateError)
+				{
+					rows[index].Status = common.messageStatus.WAITING;
+					claimed.push(rows[index]);
+				}
+
+				claimNext(index + 1);
+			});
 		}
+
+		claimNext(0);
+	});
+};
+
+exports.getMessageById = function(id, callback)
+{
+	getMessageByIdInternal(id, callback);
+};
+
+exports.listMessages = function(filters, callback)
+{
+	var clauses = [];
+	var params = [];
+	var limit = filters.limit || 100;
+	var offset = filters.offset || 0;
+	var sql = "SELECT id, Queue, Priority, Created, Updated, Url, Verb, Delivery, Status, RetryCounter, LastError FROM Message";
+
+	if (filters.queue)
+	{
+		clauses.push("Queue = ?");
+		params.push(filters.queue);
+	}
+
+	if (filters.status)
+	{
+		clauses.push("Status = ?");
+		params.push(filters.status);
+	}
+
+	if (clauses.length)
+	{
+		sql += " WHERE " + clauses.join(" AND ");
+	}
+
+	sql += " ORDER BY Updated DESC, id DESC LIMIT ? OFFSET ?";
+	params.push(limit);
+	params.push(offset);
+
+	runQuery(sql, params, callback);
+};
+
+exports.listQueues = function(callback)
+{
+	var sql = "SELECT QueueInfo.Name as Name, QueueInfo.Updated, QueueInfo.WasUpdated, QueueInfo.SendInterval, QueueInfo.Retries, QueueInfo.RetryInterval, QueueInfo.Success, QueueInfo.Fail, QueueInfo.Added, QueueInfo.Succeeded, QueueInfo.Failed, COUNT(Message.id) as TotalMessages, SUM(CASE WHEN Message.Status = 'new' THEN 1 ELSE 0 END) as NewMessages, SUM(CASE WHEN Message.Status = 'waiting' THEN 1 ELSE 0 END) as WaitingMessages, SUM(CASE WHEN Message.Status = 'error' THEN 1 ELSE 0 END) as ErrorMessages, SUM(CASE WHEN Message.Status = 'fail' THEN 1 ELSE 0 END) as FailedMessages, SUM(CASE WHEN Message.Status = 'success' THEN 1 ELSE 0 END) as SuccessfulMessages FROM QueueInfo LEFT JOIN Message ON QueueInfo.Name = Message.Queue GROUP BY QueueInfo.Name, QueueInfo.Updated, QueueInfo.WasUpdated, QueueInfo.SendInterval, QueueInfo.Retries, QueueInfo.RetryInterval, QueueInfo.Success, QueueInfo.Fail, QueueInfo.Added, QueueInfo.Succeeded, QueueInfo.Failed ORDER BY QueueInfo.Name";
+
+	runQuery(sql, [], callback);
+};
+
+exports.getStatsSummary = function(callback)
+{
+	runQuery("SELECT Key, Figure FROM Stats ORDER BY Key", [], callback);
+};
+
+exports.listEvents = function(limit, callback)
+{
+	runQuery("SELECT id, MessageId, Queue, EventType, Status, Detail, Created FROM EventLog ORDER BY id DESC LIMIT ?", [limit || 50], callback);
+};
+
+exports.requeueMessageById = function(id, callback)
+{
+	getMessageByIdInternal(id, function(error, row)
+	{
+		var queueName;
+
+		if (error || !row)
+		{
+			callback(error || new Error("Message not found"));
+			return;
+		}
+
+		queueName = common.getOriginalQueueName(row.Queue);
+		ensureQueueInfo(queueName, function()
+		{
+			runQuery("UPDATE Message SET Queue=?, Status=?, RetryCounter=0, Delivery=NOW(), Updated=NOW() WHERE id=?", [queueName, common.messageStatus.NEW, id], function(updateError)
+			{
+				if (!updateError)
+				{
+					logEvent(id, queueName, "requeue", common.messageStatus.NEW, "Message requeued from admin API");
+				}
+
+				if (callback)
+				{
+					callback(updateError, {
+						id: id,
+						queue: queueName,
+						status: common.messageStatus.NEW
+					});
+				}
+			});
+		});
+	});
+};
+
+exports.moveMessageToDeadLetter = function(id, callback)
+{
+	getMessageByIdInternal(id, function(error, row)
+	{
+		var deadLetterQueue;
+
+		if (error || !row)
+		{
+			callback(error || new Error("Message not found"));
+			return;
+		}
+
+		deadLetterQueue = common.getDeadLetterQueueName(row.Queue);
+		ensureQueueInfo(deadLetterQueue, function()
+		{
+			runQuery("UPDATE Message SET Queue=?, Status=?, Updated=NOW() WHERE id=?", [deadLetterQueue, common.messageStatus.FAIL, id], function(updateError)
+			{
+				if (!updateError)
+				{
+					logEvent(id, deadLetterQueue, "dead-letter", common.messageStatus.FAIL, "Message moved to dead-letter queue");
+				}
+
+				if (callback)
+				{
+					callback(updateError, {
+						id: id,
+						queue: deadLetterQueue,
+						status: common.messageStatus.FAIL
+					});
+				}
+			});
+		});
 	});
 };

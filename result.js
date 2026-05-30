@@ -1,41 +1,40 @@
 /*
 Fair Source License - v1.0 License details: https://opensource.org/licenses/Fair
-Free for general use. Contact Göran Johansson at realdepeh@hotmail.com for commercial licensing.
-Attribution: Göran Johansson, realdepeh@hotmail.com, https://github.com/depeh
+Free for general use. Contact Goran Johansson at realdepeh@hotmail.com for commercial licensing.
+Attribution: Goran Johansson, realdepeh@hotmail.com, https://github.com/depeh
 */
 
 var require = require("./rq");
 
-var request = require("request");
+var httpClient = require("./httpClient");
 var common = require('./common');
 var logger = require('./logger');
 var config = require('./config');
 var db = require('./db');
 
-var url = require('url');
-
 function handleAction(actionStr, id, result, body, info)
 {
+	var actionArray;
+	var deleted = false;
+	var i;
+	var action;
+
 	if (actionStr == null || actionStr == undefined)
 	{
 		return;
 	}
 
-	// Support multiple actions divided by ,
-	var actionArray = actionStr.split(',');
+	actionArray = actionStr.split(',');
 
-	var deleted = false;
-
-	for (var i = 0; i < actionArray.length; i++)
+	for (i = 0; i < actionArray.length; i++)
 	{
-		var action = actionArray[i].trim();
+		action = actionArray[i].trim();
 
-			if (action == "DELETE" && result == common.statsType.SUCCEEDED)
-			{
-				// DELETE is async; mark as deleted immediately to prevent subsequent MOVE actions.
-				deleted = true;
-				deleteMessageById(id);
-			}
+		if (action == "DELETE" && result == common.statsType.SUCCEEDED)
+		{
+			deleted = true;
+			deleteMessageById(id);
+		}
 		else if (common.validateEmail(action))
 		{
 			sendEmail(action, id, result, body, info);
@@ -44,14 +43,12 @@ function handleAction(actionStr, id, result, body, info)
 		{
 			sendHttpMessage(action, id, result);
 		}
-		else if (action.length > 1 && deleted == false) // if the queue is deleted it cant be moved to another queue.
+		else if (action.length > 1 && deleted == false)
 		{
 			moveToQueue(action, id, result);
 		}
 	}
-
-};
-
+}
 
 function moveToQueue(queue, id, result)
 {
@@ -63,69 +60,55 @@ function sendHttpMessage(uri, id, result)
 {
 	logger.info("Msg #" + id + " Action for " + result + " message. Sending http request to: " + uri);
 
-	// Create headers for the request
-	var headersJson = JSON.parse("{}");
-	headersJson['user-agent'] = "Q";
-
-	// Parse the query and add id and result
-	var qs = url.parse(uri, true).query;
-	qs['id'] = id;
-	qs['result'] = result;
-
-	request(
-	{
+	httpClient.send({
 		uri: uri,
 		method: 'GET',
-		headers: headersJson,
+		headers: {
+			'user-agent': 'Q'
+		},
 		timeout: 10000,
-		qs: qs
+		qs: {
+			id: id,
+			result: result
+		}
 	}, function(error, response, body)
 	{
-
 		if (error)
 		{
 			logger.warn("Msg #" + id + " Action. Error while sending http for " + result + " msg. Error: " + error);
 			return;
 		}
 
-			var status = response.statusCode;
-			if (status != 200)
-			{
-				logger.warn("Msg #" + id + " Action. Error while sending http for " + result + " msg. http statuscode: " + status);
-				return;
-			}
+		if (response.statusCode != 200)
+		{
+			logger.warn("Msg #" + id + " Action. Error while sending http for " + result + " msg. http statuscode: " + response.statusCode);
+			return;
+		}
 
-		// If the status is ok, then do SUCCESS measures and then delete the queue item ID
 		logger.info("Msg #" + id + " Action. Success on sending http for " + result + " msg. Response: " + body);
 	});
-
 }
 
 function sendEmail(mail, id, result, body, info)
 {
-
-	var message = {
+	transporter.sendMail({
 		from: config.get('email.sender'),
 		to: mail,
 		subject: "Queue msg #" + id + " " + result,
 		text: "Queue msg #" + id + "\nResult: " + result + "\nMore info: " + info + "\nBody:\n-----------------------------------------\n" + body,
 		html: "Queue msg #" + id + "<br>Result: " + result + "<br>More info: " + info + "<br>Body:<br><br>" + body
-	};
-
-	transporter.sendMail(message, function(err, info)
+	}, function(err)
 	{
 		if (err)
 		{
 			logger.warn("Msg #" + id + " Mail was not sent to " + mail + "! Message: " + err.message);
+			return;
 		}
-		else
-		{
-			logger.info("Msg #" + id + " Mail sent to " + mail + " successfully!");
-		}
+
+		logger.info("Msg #" + id + " Mail sent to " + mail + " successfully!");
 	});
 
 	logger.info("Msg #" + id + " Action for " + result + " message. Sending mail to: " + mail);
-	// todo: Send Email
 }
 
 function moveMessageToQueue(id, queue)
@@ -138,61 +121,93 @@ function deleteMessageById(id)
 	db.deleteMessageById(id);
 }
 
+function onDone(done)
+{
+	if (typeof done === 'function')
+	{
+		done();
+	}
+}
 
-exports.handleSuccess = function(id, body, info)
+function deadLetterActive()
+{
+	if (config.has('consumer.deadLetter.active'))
+	{
+		return config.get('consumer.deadLetter.active');
+	}
+
+	return true;
+}
+
+exports.handleSuccess = function(id, body, info, done)
 {
 	db.getMessageQueueById(id, function(res)
 	{
+		var successString;
+		var deliveryTime;
+		var updated;
+		var status;
+		var retryCounter;
+		var queue;
+
 		if (res == null || res == undefined)
 		{
 			logger.error("FATAL! Msg #" + id + " was successfully sent, but no ACTION could be taken!");
+			onDone(done);
 			return;
 		}
-		var successString = (res.s1 == null) ? res.s2 : res.s1;
-		var deliveryTime = res.Delivery;
-		var updated = new Date();
-		var status = common.messageStatus.SUCCESS;
-		var retryCounter = res.RetryCounter;
-		var queue = res.Queue;
+
+		successString = (res.s1 == null) ? res.s2 : res.s1;
+		deliveryTime = res.Delivery;
+		updated = new Date();
+		status = common.messageStatus.SUCCESS;
+		retryCounter = res.RetryCounter;
+		queue = res.Queue;
 
 		db.increaseStats("SuccessfulSentMessages");
 		db.increaseQueueStats(queue, common.statsType.SUCCEEDED);
-		// Update the Message
-		db.updateMessageById(id, retryCounter, updated, deliveryTime, status);
-
-		handleAction(successString, id, common.statsType.SUCCEEDED, body, info);
-
+		db.updateMessageById(id, retryCounter, updated, deliveryTime, status, function()
+		{
+			db.logEvent(id, queue, "success", status, "Message delivered successfully");
+			handleAction(successString, id, common.statsType.SUCCEEDED, body, info);
+			onDone(done);
+		});
 	});
-}
+};
 
-
-exports.handleError = function(id, body, info, fatal)
+exports.handleError = function(id, body, info, fatal, done)
 {
-
 	db.getMessageQueueById(id, function(res)
 	{
+		var retryCounter;
+		var retries;
+		var retryInterval;
+		var failString;
+		var queue;
+		var status;
+		var updated;
+		var deliveryTime;
+		var errorText;
+
 		if (res == null || res == undefined)
 		{
 			logger.error("FATAL! Msg #" + id + " was NOT successfully sent, but no ACTION could be taken!");
+			onDone(done);
 			return;
 		}
 
-		var retryCounter = res.RetryCounter;
-		var retries = (res.r1 == null) ? res.r2 : res.r1;
-		var retryInterval = (res.ri1 == null) ? res.ri2 : res.ri1;
-		var failString = (res.f1 == null) ? res.f2 : res.f1;
-		var queue = res.Queue;
+		retryCounter = res.RetryCounter;
+		retries = (res.r1 == null) ? res.r2 : res.r1;
+		retryInterval = (res.ri1 == null) ? res.ri2 : res.ri1;
+		failString = (res.f1 == null) ? res.f2 : res.f1;
+		queue = res.Queue;
+		status = common.messageStatus.ERROR;
 
-		var status = common.messageStatus.ERROR;
-
-		// increase the retry counter
 		retryCounter = retryCounter + 1;
+		updated = new Date();
+		deliveryTime = new Date(updated.getTime() + (1000 * retryInterval));
+		errorText = info;
 
-		// Calculate new delivery time.
-		var updated = new Date();
-		var deliveryTime = new Date(updated.getTime() + (1000 * retryInterval));
-
-		var errorText = info;
 		if (body != undefined)
 		{
 			errorText = body + "\n" + info;
@@ -205,31 +220,35 @@ exports.handleError = function(id, body, info, fatal)
 		{
 			db.increaseStats("FailedMessages");
 			db.increaseQueueStats(queue, common.statsType.FAILED);
-
 			retryCounter = retries;
-			// set fail Status
-
 			status = common.messageStatus.FAIL;
 			logger.warn("Msg #" + id + " Failed! I have given up!");
 			logger.warn("Msg #" + id + " Response: " + body);
-
 		}
 		else
 		{
 			db.increaseStats("RetriedMessages");
-
 			logger.warn("Retrying msg #" + id + " at " + deliveryTime + ". Retry #" + retryCounter);
 		}
 
-		// Update the Message
-		db.updateMessageById(id, retryCounter, updated, deliveryTime, status);
-
-		if (status == common.messageStatus.FAIL)
+		db.updateMessageById(id, retryCounter, updated, deliveryTime, status, function()
 		{
-			// Do FAIL measures.
-			handleAction(failString, id, common.statsType.FAILED, body, info);
-		}
+			if (status == common.messageStatus.FAIL)
+			{
+				db.logEvent(id, queue, "failed", status, errorText);
+				if (deadLetterActive())
+				{
+					db.moveMessageToDeadLetter(id, function() {});
+				}
 
+				handleAction(failString, id, common.statsType.FAILED, body, info);
+			}
+			else
+			{
+				db.logEvent(id, queue, "retry", status, "Retry #" + retryCounter + " scheduled");
+			}
+
+			onDone(done);
+		});
 	});
-
-}
+};

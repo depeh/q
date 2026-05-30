@@ -15,6 +15,7 @@
 			"127.0.0.1",
 			"8.8.8.8"
 		],
+		"maxBodySizeKb": 256,
 		"httpPort": 8080,
 		"httpsPort": 8081,
 		"ssl": {
@@ -24,7 +25,13 @@
 		}
 	},
 	"consumer": {
-		"sleepForSeconds": 1
+		"sleepForSeconds": 1,
+		"maxConcurrent": 4,
+		"minIntervalPerHostMs": 0,
+		"deadLetter": {
+			"active": true,
+			"prefix": "dead-letter."
+		}
 	},
 	"email": {
 		"active": false,

@@ -49,3 +49,14 @@ CREATE TABLE `Stats` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `key_UNIQUE` (`Key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+CREATE TABLE `EventLog` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `MessageId` int(11) DEFAULT NULL,
+  `Queue` varchar(100) DEFAULT NULL,
+  `EventType` varchar(50) DEFAULT NULL,
+  `Status` varchar(45) DEFAULT NULL,
+  `Detail` text,
+  `Created` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
