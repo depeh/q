@@ -11,6 +11,7 @@ var httpClient = require("./httpClient");
 var logger = require('./logger');
 var result = require('./result');
 var common = require('./common');
+var mailTransporter = null;
 
 function parseResponseCodeConfig(value)
 {
@@ -135,6 +136,12 @@ function handleHttp(id, uri, verb, headers, params, done)
 
 function handleEmail(id, uri, verb, headers, params, done)
 {
+	if (!mailTransporter)
+	{
+		result.handleError(id, "Mail transport missing", "Email transporter is not configured.", true, done);
+		return;
+	}
+
 	var headersJson = sanitizeHeaders(JSON.parse(headers));
 	var paramsJson = JSON.parse(params);
 	var mailFrom = headersJson['q-from'];
@@ -171,7 +178,7 @@ function handleEmail(id, uri, verb, headers, params, done)
 
 	mailBody = mailBody.split('\\n').join('\n');
 
-	transporter.sendMail({
+	mailTransporter.sendMail({
 		from: mailFrom,
 		to: mailTo,
 		subject: mailSubject,
@@ -202,4 +209,9 @@ exports.dispatch = function(message, done)
 	}
 
 	handleHttp(message.id, message.Url, message.Verb, message.Headers, message.Params, done || function() {});
+};
+
+exports.setTransporter = function(transporter)
+{
+	mailTransporter = transporter;
 };

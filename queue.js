@@ -10,8 +10,16 @@ var logger = require('./logger');
 var common = require('./common');
 var doRequest = require('./doRequest');
 var db = require('./db');
+var result = require('./result');
+var configValidator = require('./configValidator');
 
-global.conn = db.connect();
+var validation = configValidator.validateConfig();
+validation.warnings.forEach(function(warning)
+{
+	logger.warn(warning);
+});
+
+db.connect();
 
 var git = require('git-rev');
 var gitVersion = "";
@@ -30,7 +38,9 @@ git.short(function(str)
 
 if (config.get('email.active'))
 {
-	global.transporter = common.initMail();
+	var transporter = common.initMail();
+	doRequest.setTransporter(transporter);
+	result.setTransporter(transporter);
 }
 
 function getHostForMessage(message)

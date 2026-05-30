@@ -46,6 +46,8 @@ npm install
 
 Copy `config/default.sample.json` to `config/default.json`.
 
+Q validates configuration on startup. If required or malformed values are found, startup fails early with explicit error messages.
+
 For SQLite, this is enough:
 
 ```json
@@ -356,6 +358,30 @@ Example:
 | `Q-subject` | `Important Mail` |
 | `Q-body` | `Hello!\nThis is a test mail` |
 
+## Send multiple emails in one request
+
+Q supports this by combining:
+- `Q-url: email`
+- `_params` as a JSON array string
+
+Q will create one queued message per object in `_params`, which means one email per object.
+
+Example:
+
+```bash
+curl -X POST http://127.0.0.1:8080 \
+  -H "Q-name: bulk-mail" \
+  -H "Q-url: email" \
+  -H "Q-from: noreply@example.com" \
+  -H "Q-subject: Hello $name" \
+  -H "Q-body: Hi $name, your id is $id" \
+  --data-urlencode '_params=[{"to":"anna@example.com","name":"Anna","id":"1001"},{"to":"bob@example.com","name":"Bob","id":"1002"}]'
+```
+
+Result:
+- one email to `anna@example.com` with `name=Anna`, `id=1001`
+- one email to `bob@example.com` with `name=Bob`, `id=1002`
+
 # Admin UI And API
 
 ## Dashboard
@@ -482,6 +508,16 @@ Check:
 - the request returned a `<q-id>`
 - the source IP is whitelisted
 - the job may already have completed and been deleted, so check the Activity section in `/admin`
+
+## If server or queue exits immediately at startup
+
+Q now fails fast on invalid config.
+
+Check:
+- `db.client` is `mysql` or `sqlite`
+- required DB fields are set for the chosen backend
+- numeric config values are valid numbers (`httpPort`, `sleepForSeconds`, etc.)
+- `consumer.httpResponseCodesOK` and `consumer.httpResponseCodesFail` only contain valid HTTP status codes (100-599)
 
 ## If jobs never leave the queue
 

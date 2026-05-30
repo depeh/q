@@ -11,9 +11,16 @@ var db = require('./db');
 var logger = require('./logger');
 var common = require('./common');
 var dashboard = require('./dashboard');
+var configValidator = require('./configValidator');
 var git = require('git-rev');
 
-global.conn = db.connect();
+var validation = configValidator.validateConfig();
+validation.warnings.forEach(function(warning)
+{
+	logger.warn(warning);
+});
+
+var conn = db.connect();
 
 var gitVersion = "";
 var SSL = config.get('server.ssl.active');
@@ -32,7 +39,9 @@ git.short(function(str)
 
 if (config.get('email.active'))
 {
-	global.transporter = common.initMail();
+	var transporter = common.initMail();
+	require('./doRequest').setTransporter(transporter);
+	require('./result').setTransporter(transporter);
 }
 
 setInterval(function()

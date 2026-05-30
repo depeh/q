@@ -11,6 +11,7 @@ var path = require('path');
 var config = require("./config");
 var logger = require('./logger');
 var common = require('./common');
+var conn = null;
 
 var dbClient = config.has('db.client') ? config.get('db.client') : 'mysql';
 
@@ -41,6 +42,12 @@ function withNow(sql)
 
 function runQuery(sql, params, callback)
 {
+	if (!conn)
+	{
+		callback(new Error("Database connection is not initialized."), []);
+		return;
+	}
+
 	var query = conn.query(sql, params, function(error, rows)
 	{
 		if (error)
@@ -191,10 +198,12 @@ exports.connect = function()
 	if (isSqlite())
 	{
 		logger.info("Using SQLite backend");
-		return connectSqlite();
+		conn = connectSqlite();
+		return conn;
 	}
 
-	return connectMysql();
+	conn = connectMysql();
+	return conn;
 };
 
 exports.logEvent = logEvent;

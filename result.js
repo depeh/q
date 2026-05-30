@@ -11,6 +11,7 @@ var common = require('./common');
 var logger = require('./logger');
 var config = require('./config');
 var db = require('./db');
+var mailTransporter = null;
 
 function handleAction(actionStr, id, result, body, info)
 {
@@ -91,7 +92,13 @@ function sendHttpMessage(uri, id, result)
 
 function sendEmail(mail, id, result, body, info)
 {
-	transporter.sendMail({
+	if (!mailTransporter)
+	{
+		logger.warn("Msg #" + id + " Mail action skipped. Transporter is not configured.");
+		return;
+	}
+
+	mailTransporter.sendMail({
 		from: config.get('email.sender'),
 		to: mail,
 		subject: "Queue msg #" + id + " " + result,
@@ -251,4 +258,9 @@ exports.handleError = function(id, body, info, fatal, done)
 			onDone(done);
 		});
 	});
+};
+
+exports.setTransporter = function(transporter)
+{
+	mailTransporter = transporter;
 };
